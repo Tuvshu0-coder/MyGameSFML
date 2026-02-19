@@ -1,0 +1,9 @@
+# Visual Studio junk
+*.exe
+*.pdb
+*.obj
+*.ilk
+Debug/
+Release/
+x64/
+.vs/
