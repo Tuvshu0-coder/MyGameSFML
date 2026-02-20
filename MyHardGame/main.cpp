@@ -2,14 +2,69 @@
 #include <iostream>
 #include <optional>
 
+class Player
+{
+private:
+	sf::Texture m_texture;
+	sf::Sprite m_sprite;
+	float m_speed = 5.0f;
+public:
+	Player() : m_sprite(m_texture) {}
+	// initialize the texture and sprite
+	bool load(const std::string& path) {
+		if (!m_texture.loadFromFile(path)) {
+			return false;
+		}
+		m_sprite.setTexture(m_texture, true);
+		m_sprite.setPosition({ 300.f, 250.f });
+		return true;
+	}
+
+	void handleInput() {
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A))
+			m_sprite.move({ -m_speed, 0.f });
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
+			m_sprite.move({m_speed, 0.f});
+	}
+
+	void update(sf::Vector2u windowSize) {
+		sf::Vector2f pos = m_sprite.getPosition();
+		sf::FloatRect bounds = m_sprite.getGlobalBounds();
+
+		float winWidth = static_cast<float>(windowSize.x);
+		float winHeight = static_cast<float>(windowSize.y);
+
+		if (pos.x < 0.f) pos.x = 0.f;
+		if (pos.x + bounds.size.x > winWidth) {
+			pos.x = winWidth - bounds.size.x;
+		}
+		if (pos.y < 0.f) pos.y = 0.f;
+		if (pos.y + bounds.size.y > winHeight) {
+			pos.y = winHeight - bounds.size.y;
+		}
+		m_sprite.setPosition(pos);
+	}
+
+	void draw(sf::RenderWindow& window) {
+		window.draw(m_sprite);
+	}
+};
+
 int main() {
 
-	sf::RenderWindow window(sf::VideoMode({700, 500}), "SFML works!");
+	sf::RenderWindow window(sf::VideoMode({700, 500}), "SFML is working wtf");
 	window.setFramerateLimit(120);
+	//sf::Vector2f windowSize = window.getSize();
 	
-	sf::RectangleShape player( sf::Vector2f(100.f, 100.f));
+	/*sf::RectangleShape player( sf::Vector2f(100.f, 100.f));
 	player.setFillColor(sf::Color::Green);
-	player.setPosition(sf::Vector2f(350.f, 250.f));
+	player.setPosition(sf::Vector2f(350.f, 250.f));*/
+
+	Player player;
+	if (!player.load("Assets/player.png")) {
+		std::cerr << "Failed to load sprite! You may fix this clanker" << std::endl;
+		return -1;
+	}
 
 	sf::Clock clock;
 	int frameCount = 0;
@@ -19,30 +74,22 @@ int main() {
 			if (event->is<sf::Event::Closed>())
 				window.close();
 		}
-
+		// Input A D handling
+		player.handleInput();
+		// Bound check
+		player.update(window.getSize());
+		
+		//FPS counter
 		frameCount++;
-
 		if (clock.getElapsedTime().asSeconds() >= 1.0f) {
 			std::cout << "FPS " << frameCount << std::endl;
 			frameCount = 0;
 			clock.restart();
 		}
-
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A))
-			player.move({ -0.5f, 0.f });
-
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W))
-			player.move({ 0.f, -0.5f });
-
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
-			player.move({ 0.5f, 0.f });
-
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S))
-			player.move({ 0.f, 0.5f });
-
+		//std::cout << "X: " << position.x << "Y: " << position.y << std::endl;
 
 		window.clear();
-		window.draw(player);
+		player.draw(window);
 		window.display();
 	}
 
