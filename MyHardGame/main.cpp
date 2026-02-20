@@ -8,6 +8,12 @@ private:
 	sf::Texture m_texture;
 	sf::Sprite m_sprite;
 	float m_speed = 5.0f;
+
+	float m_velocityY = 0.0f;
+	float m_gravity = 0.5f;
+	float m_jumpStrength = -12.f;
+	bool m_isGrounded = false;
+
 public:
 	Player() : m_sprite(m_texture) {}
 	// initialize the texture and sprite
@@ -25,14 +31,32 @@ public:
 			m_sprite.move({ -m_speed, 0.f });
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
 			m_sprite.move({m_speed, 0.f});
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space) && m_isGrounded )
+			m_velocityY = m_jumpStrength;
+			m_isGrounded = false;
 	}
 
 	void update(sf::Vector2u windowSize) {
+		// apply gravity to Velocity
+		m_velocityY += m_gravity;
+
+		//Move the sprite by the velocity
+		m_sprite.move({ 0.f, m_velocityY });
+
 		sf::Vector2f pos = m_sprite.getPosition();
 		sf::FloatRect bounds = m_sprite.getGlobalBounds();
 
 		float winWidth = static_cast<float>(windowSize.x);
 		float winHeight = static_cast<float>(windowSize.y);
+
+		if (pos.y + bounds.size.y > winHeight) {
+			pos.y = winHeight - bounds.size.y;
+			m_velocityY = 0.0f;
+			m_isGrounded = true;
+		}
+		else {
+			m_isGrounded = false;
+		}
 
 		if (pos.x < 0.f) pos.x = 0.f;
 		if (pos.x + bounds.size.x > winWidth) {
