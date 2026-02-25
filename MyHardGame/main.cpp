@@ -2,6 +2,8 @@
 #include <iostream>
 #include <optional>
 
+
+
 class Player
 {
 private:
@@ -13,6 +15,14 @@ private:
 	float m_gravity = 0.5f;
 	float m_jumpStrength = -12.f;
 	bool m_isGrounded = false;
+	bool m_isMovingX = false;
+	
+	enum class Direction
+	{
+		left,
+		right
+	};
+	Direction m_direction = Direction::right;
 
 public:
 	Player() : m_sprite(m_texture) {}
@@ -26,14 +36,31 @@ public:
 		return true;
 	}
 
+
 	void handleInput() {
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A))
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A)) {
 			m_sprite.move({ -m_speed, 0.f });
+			m_direction = Direction::left;
+		}
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
-			m_sprite.move({m_speed, 0.f});
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space) && m_isGrounded )
+		{
+			m_sprite.move({ m_speed, 0.f });
+			m_direction = Direction::right;
+		}
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space) && m_isGrounded)
+		{
 			m_velocityY = m_jumpStrength;
 			m_isGrounded = false;
+		}
+	}
+
+	void updateDirection() {
+		if (m_direction == Direction::left) {
+			m_sprite.setTextureRect(sf::IntRect({ 0, 0 }, { 80, 80 }));
+		}
+		else if (m_direction == Direction::right) {
+			m_sprite.setTextureRect(sf::IntRect({ 80, 0 }, { 80, 80 }));
+		}
 	}
 
 	void update(sf::Vector2u windowSize) {
@@ -79,10 +106,7 @@ int main() {
 	sf::RenderWindow window(sf::VideoMode({700, 500}), "SFML is working wtf");
 	window.setFramerateLimit(120);
 	//sf::Vector2f windowSize = window.getSize();
-	
-	/*sf::RectangleShape player( sf::Vector2f(100.f, 100.f));
-	player.setFillColor(sf::Color::Green);
-	player.setPosition(sf::Vector2f(350.f, 250.f));*/
+
 
 	Player player;
 	if (!player.load("Assets/player.png")) {
