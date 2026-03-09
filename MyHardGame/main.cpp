@@ -15,7 +15,7 @@ private:
 	float m_gravity = 0.5f;
 	float m_jumpStrength = -12.f;
 	bool m_isGrounded = false;
-	bool m_isMovingX = false;
+	//bool m_isMovingX = false;
 	
 	enum class Direction
 	{
@@ -52,6 +52,8 @@ public:
 			m_velocityY = m_jumpStrength;
 			m_isGrounded = false;
 		}
+			updateDirection();
+
 	}
 
 	void updateDirection() {
@@ -94,6 +96,7 @@ public:
 			pos.y = winHeight - bounds.size.y;
 		}
 		m_sprite.setPosition(pos);
+
 	}
 
 	void draw(sf::RenderWindow& window) {
@@ -102,7 +105,7 @@ public:
 };
 
 int main() {
-
+	
 	sf::RenderWindow window(sf::VideoMode({700, 500}), "SFML is working wtf");
 	window.setFramerateLimit(120);
 	//sf::Vector2f windowSize = window.getSize();
