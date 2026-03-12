@@ -1,8 +1,12 @@
 #include "Game.h"
 #include <iostream>
 
-Game::Game() : m_window(sf::VideoMode(700, 500), "Learning SFML game dev")
+Game::Game() : m_window(sf::VideoMode({ 700, 500 }), "Learning SFML game dev")
+
+
+//sf::RenderWindow window(sf::VideoMode({700, 500}), "Learning SFML");
 {
+
 	m_window.setFramerateLimit(120);
 	if (!m_player.load("Assets/player.png"))
 		std::cerr << "Failed to load player texture!  fix the clanker\n";
@@ -31,11 +35,24 @@ void Game::processEvents()
 	}
 
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A))
-		m_player.move(-m_player.m_speed, 0.f), m_player.setDirection(Player::Direction::Left);
+		m_player.move(-m_player.getSpeed(), 0.f), m_player.setDirection(Player::Direction::Left);
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
-		m_player.move(m_player.m_speed, 0.f), m_player.setDirection(Player::Direction::Right);
+		m_player.move(m_player.getSpeed(), 0.f), m_player.setDirection(Player::Direction::Right);
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space))
 		m_player.jump();
-
 }
+
+void Game::update(float deltaTime) 
+{
+	m_player.applyGravity();
+	m_player.update(m_window.getSize());
+}
+
+void Game::render()
+{
+	m_window.clear();
+	m_player.draw(m_window);
+	m_window.display();
+}
+
 
