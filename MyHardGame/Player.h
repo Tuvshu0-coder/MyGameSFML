@@ -12,7 +12,7 @@ public:
 
     void move(float dx, float dy);
     void jump();
-    void applyGravity();
+    void applyGravity(float deltaTime);
     void update(sf::Vector2u windowSize);
     void setDirection(Direction dir);
     void draw(sf::RenderWindow& window);
@@ -25,10 +25,10 @@ private:
 
     sf::Texture m_texture;
     sf::Sprite m_sprite;
-    float m_speed = 200.f;
+    float m_speed = 500.f;
     float m_velocityY = 0.f;
-    float m_gravity = 0.5f;
-    float m_jumpStrength = -12.f;
+    float m_gravity = 2000.f;
+    float m_jumpStrength = -700.f;
     bool m_isGrounded = false;
 
     Direction m_direction = Direction::Right;

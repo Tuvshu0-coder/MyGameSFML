@@ -26,6 +26,11 @@ void Player::jump()
 	}
 }
 
+void Player::applyGravity(float deltaTime) {
+	m_velocityY += m_gravity * deltaTime;
+	m_sprite.move({ 0.f, m_velocityY * deltaTime });
+}
+
 void Player::update(sf::Vector2u windowSize)
 {
 	sf::Vector2f pos = m_sprite.getPosition();

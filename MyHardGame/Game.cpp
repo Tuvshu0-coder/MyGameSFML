@@ -34,17 +34,26 @@ void Game::processEvents()
 			m_window.close();
 	}
 
-	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A))
-		m_player.move(-m_player.getSpeed(), 0.f), m_player.setDirection(Player::Direction::Left);
-	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
-		m_player.move(m_player.getSpeed(), 0.f), m_player.setDirection(Player::Direction::Right);
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space))
 		m_player.jump();
 }
 
 void Game::update(float deltaTime) 
 {
-	m_player.applyGravity();
+	const float move = m_player.getSpeed() * deltaTime;
+
+	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A))
+	{
+		m_player.move(-move, 0.f);
+		m_player.setDirection(Player::Direction::Left);
+	}
+	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
+	{
+		m_player.move(move, 0.f);
+		m_player.setDirection(Player::Direction::Right);
+	}
+
+	m_player.applyGravity(deltaTime);
 	m_player.update(m_window.getSize());
 }
 
