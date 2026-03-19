@@ -1,5 +1,6 @@
 #pragma once
 #include <SFML/Graphics.hpp>
+#include <vector>
 
 class Player
 {
@@ -14,6 +15,7 @@ public:
     void jump();
     void applyGravity(float deltaTime);
     void update(sf::Vector2u windowSize);
+    void resolveCollisions(const std::vector<sf::FloatRect>& platforms);
     void setDirection(Direction dir);
     void draw(sf::RenderWindow& window);
 
@@ -32,5 +34,4 @@ private:
     bool m_isGrounded = false;
 
     Direction m_direction = Direction::Right;
-
 };

@@ -78,4 +78,27 @@ sf::FloatRect  Player::getGlobalBounds() const
 	return m_sprite.getGlobalBounds();
 }
 
+void Player::resolveCollisions(const std::vector<sf::FloatRect>& platforms)
+{
+	m_isGrounded = false;
+	auto bounds = m_sprite.getGlobalBounds();
+
+	for (const auto& platform : platforms)
+	{
+		if (const auto intersection = bounds.findIntersection(platform))
+		{
+			const float platformTop = platform.position.y;
+			const float playerTop = bounds.position.y;
+
+			if (m_velocityY >= 0.f && playerTop < platformTop)
+			{
+				m_sprite.setPosition({ bounds.position.x, platformTop - bounds.size.y });
+				m_velocityY = 0.f;
+				m_isGrounded = true;
+				bounds = m_sprite.getGlobalBounds();
+			}
+		}
+	}
+}
+
 
