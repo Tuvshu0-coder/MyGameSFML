@@ -9,7 +9,7 @@ public:
 
     Player();
     
-    bool load(const std::string& path);
+    bool load(const std::string& path , sf::Vector2u windowSize);
 
     void move(float dx, float dy);
     void jump();

@@ -2,12 +2,12 @@
 
 Player::Player() : m_sprite(m_texture) {} // wut
 
-bool Player::load(const std::string& path)
+bool Player::load(const std::string& path, sf::Vector2u windowSize)
 {
 	if (!m_texture.loadFromFile(path))
 		return false;
 	m_sprite.setTexture(m_texture, true);
-	m_sprite.setPosition({ 300.f, 250.f });
+	m_sprite.setPosition({ static_cast<float>(windowSize.x) * 0.5f, static_cast<float>(windowSize.y) * 0.5f });
 	updateTextureRect(); //what
 	return true;
 }
