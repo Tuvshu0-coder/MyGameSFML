@@ -52,6 +52,17 @@ void Enemy::update(float deltaTime, sf::Vector2f playerCenter)
 		return;
 	}
 
+	if (m_stunTimer > 0.f)
+	{
+		m_stunTimer -= deltaTime;
+		if (m_stunTimer < 0.f)
+			m_stunTimer = 0.f;
+
+		setState(State::Hit);
+		updateAnimation(deltaTime);
+		return;
+	}
+
 	const sf::Vector2f center = getCenter();
 	const float dx = playerCenter.x - center.x;
 	const float distance = std::abs(dx);
@@ -194,6 +205,15 @@ void Enemy::takeDamage(int amount)
 	}
 }
 
+void Enemy::stun(float seconds)
+{
+	if (isDead())
+		return;
+
+	m_stunTimer = std::max(m_stunTimer, seconds);
+	setState(State::Hit);
+}
+
 bool Enemy::isDead() const
 {
 	return m_health <= 0;
@@ -226,4 +246,9 @@ sf::Vector2f Enemy::getCenter() const
 void Enemy::draw(sf::RenderWindow& window)
 {
 	window.draw(m_sprite);
+}
+
+bool Enemy::isStunned() const
+{
+	return m_stunTimer > 0.f;
 }

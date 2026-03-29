@@ -183,13 +183,24 @@ void Game::update(float deltaTime)
 			m_enemy.takeDamage(15);
 	}
 
-	// Enemy -> Player hit (2 hit points in enemy attack anim)
+	// Enemy -> Player hit
 	if (!m_player.isDead() && m_enemy.consumeAttackHit())
 	{
 		const float dist = std::abs(m_player.getCenter().x - m_enemy.getCenter().x);
 		if (dist <= 35.f)
-			m_player.takeDamage(20);
+		{
+			if (m_player.isBlocking())
+			{
+				m_enemy.stun(0.7f);
+			}
+			else
+			{
+				m_player.takeDamage(20);
+			}
+		}
 	}
+
+	m_player.setBlocking(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::K));
 
 	updateCamera(deltaTime);
 }
@@ -206,7 +217,7 @@ void Game::drawUI()
 	playerBg.setPosition({ 12.f, 12.f });
 	playerBg.setFillColor(sf::Color(40, 40, 40));
 	playerBg.setOutlineThickness(1.f);
-	playerBg.setOutlineColor(sf::Color::White);
+ playerBg.setOutlineColor(sf::Color::White);
 
 	const float playerRatio = static_cast<float>(m_player.getHealth()) / static_cast<float>(m_player.getMaxHealth());
 	sf::RectangleShape playerHp({ barW * std::clamp(playerRatio, 0.f, 1.f), barH });
@@ -217,14 +228,23 @@ void Game::drawUI()
 	m_window.draw(playerHp);
 
 	// Enemy HP bar (top-right)
+	const int enemyHpValue = std::max(0, m_enemy.getHealth());
+	const int enemyMaxValue = std::max(1, m_enemy.getMaxHealth()); // avoid divide-by-zero
+	const float enemyRatio = static_cast<float>(enemyHpValue) / static_cast<float>(enemyMaxValue);
+
 	sf::RectangleShape enemyBg({ barW, barH });
 	enemyBg.setPosition({ static_cast<float>(m_window.getSize().x) - barW - 12.f, 12.f });
-	enemyBg.setFillColor(sf::Color(40, 40, 40));
-	enemyBg.setOutlineThickness(1.f);
+	enemyBg.setFillColor(sf::Color(25, 25, 25, 220)); // darker for visibility
+	enemyBg.setOutlineThickness(2.f);
 	enemyBg.setOutlineColor(sf::Color::White);
 
-	const float enemyRatio = static_cast<float>(m_enemy.getHealth()) / static_cast<float>(m_enemy.getMaxHealth());
-	sf::RectangleShape enemyHp({ barW * std::clamp(enemyRatio, 0.f, 1.f), barH });
+	float enemyFillW = barW * std::clamp(enemyRatio, 0.f, 1.f);
+
+	// Optional: keep at least tiny fill visible while alive
+	if (enemyHpValue > 0 && enemyFillW < 2.f)
+		enemyFillW = 2.f;
+
+	sf::RectangleShape enemyHp({ enemyFillW, barH });
 	enemyHp.setPosition({ static_cast<float>(m_window.getSize().x) - barW - 12.f, 12.f });
 	enemyHp.setFillColor(sf::Color(220, 70, 70));
 

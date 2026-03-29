@@ -33,7 +33,7 @@ float Player::getScaleFactor() const
 
 void Player::jump()
 {
-	if (m_state == State::Death || m_state == State::Hit)
+	if (m_state == State::Death || m_state == State::Hit || isBlocking())
 		return;
 
 	if (m_isGrounded)
@@ -51,7 +51,7 @@ void Player::applyGravity(float deltaTime)
 
 void Player::attack()
 {
-	if (m_state == State::Death || m_state == State::Hit)
+	if (m_state == State::Death || m_state == State::Hit || isBlocking())
 		return;
 
 	if (!m_isAttacking)
@@ -83,17 +83,12 @@ void Player::update(float deltaTime, sf::Vector2u windowSize)
 	const float scaleFactor = getScaleFactor();
 	const float currentMaxSpeed = (m_isRunning ? m_runSpeed : m_walkSpeed) * scaleFactor;
 
-	// Combo expires if you wait too long between attacks
 	if (!m_isAttacking && m_comboStep > 0)
 	{
 		m_comboTimer += deltaTime;
 		if (m_comboTimer >= m_comboTimeout)
 			m_comboStep = 0;
 	}
-
-	// Always allow changing facing direction based on input
-	if (m_inputDir == -1) setDirection(Direction::Left);
-	if (m_inputDir == 1) setDirection(Direction::Right);
 
 	if (m_state == State::Death)
 	{
@@ -109,14 +104,25 @@ void Player::update(float deltaTime, sf::Vector2u windowSize)
 		return;
 	}
 
+	// Always allow changing facing direction based on input (only when alive)
+	if (m_inputDir == -1) setDirection(Direction::Left);
+	if (m_inputDir == 1) setDirection(Direction::Right);
+
+	// BLOCK STATE
+	if (isBlocking() && m_isGrounded && !m_isAttacking)
+	{
+		m_velocityX = 0.f;
+		setState(State::Block);
+		updateAnimation(deltaTime);
+		return;
+	}
+
 	if (!m_isAttacking)
 	{
 		if (m_isGrounded)
 		{
-			// ON GROUND: Tight control. Instantly match target speed.
 			m_velocityX = static_cast<float>(m_inputDir) * currentMaxSpeed;
 
-			// Handle animation states cleanly
 			if (m_inputDir != 0)
 				setState(m_isRunning ? State::Run : State::Walk);
 			else
@@ -124,61 +130,54 @@ void Player::update(float deltaTime, sf::Vector2u windowSize)
 		}
 		else
 		{
-			// IN AIR: Air strafing!
-			// Allow them to move, but cap it at the max speed so they don't go flying too fast.
 			if (m_inputDir != 0)
-			{
-				// Give them control in the air...
 				m_velocityX += static_cast<float>(m_inputDir) * (m_airAcceleration * scaleFactor) * deltaTime;
-			}
 
-			// Clamp the velocity so they never exceed currentMaxSpeed mid-air!
 			if (m_velocityX > currentMaxSpeed) m_velocityX = currentMaxSpeed;
 			if (m_velocityX < -currentMaxSpeed) m_velocityX = -currentMaxSpeed;
 		}
 	}
 	else
 	{
-		// Freeze horizontal movement during attack on ground
 		if (m_isGrounded)
 			m_velocityX = 0.f;
 	}
 
-	// Actually move the sprite horizontally based on momentum!
 	m_sprite.move({ m_velocityX * deltaTime, 0.f });
 
-	// 2. --- EXISTING SCREEN BOUNDS LOGIC ---
 	sf::Vector2f pos = m_sprite.getPosition();
 	float winWidth = static_cast<float>(windowSize.x);
 	float winHeight = static_cast<float>(windowSize.y);
 
-	// floor and ceiling bounds check
-	if (pos.y > winHeight) {
+	if (pos.y > winHeight)
+	{
 		pos.y = winHeight;
 		m_velocityY = 0.f;
 		m_isGrounded = true;
 	}
 
-	// Because of origin, bounds checking uses body width
 	const float bodyHalfWidth = 5.f * m_scale;
 	if (pos.x - bodyHalfWidth < 0.f)
 	{
 		pos.x = bodyHalfWidth;
-		m_velocityX = 0.f;		
+		m_velocityX = 0.f;
 	}
 	if (pos.x + bodyHalfWidth > winWidth)
 	{
 		pos.x = winWidth - bodyHalfWidth;
-		m_velocityX = 0.f;		
+		m_velocityX = 0.f;
 	}
-	
+
 	m_sprite.setPosition(pos);
-	updateAnimation(deltaTime); 
+	updateAnimation(deltaTime);
 
 }
 
 void Player::setDirection(Direction dir)
 {
+	if (m_state == State::Death)
+		return;
+
 	m_direction = dir;
 }
 
@@ -263,14 +262,12 @@ bool Player::isDead() const
 	return m_health <= 0;
 }
 
-void Player::updateAnimation( float deltaTime)
+void Player::updateAnimation(float deltaTime)
 {
 	m_animationTimer += deltaTime;
 
 	int activeRow = 0;
 	int totalFrames = 1;
-
-	// Reset frame duration to default every frame. We will override it if we are running.
 	float currentFrameDuration = m_frameDuration;
 	bool loop = true;
 
@@ -290,30 +287,36 @@ void Player::updateAnimation( float deltaTime)
 		totalFrames = 8;
 		currentFrameDuration = 0.08f;
 	}
+	else if (m_state == State::Block)
+	{
+		activeRow = 11; // Block row
+		totalFrames = 6;
+		currentFrameDuration = 0.09f;
+	}
 	else if (m_state == State::Attack1)
 	{
-		activeRow = 7;   // Slash 1
+		activeRow = 7;
 		totalFrames = 7;
 		currentFrameDuration = 0.06f;
 		loop = false;
 	}
 	else if (m_state == State::Attack2)
 	{
-		activeRow = 8;   // Slash 2
+		activeRow = 8;
 		totalFrames = 5;
 		currentFrameDuration = 0.06f;
 		loop = false;
 	}
 	else if (m_state == State::Attack3)
 	{
-		activeRow = 9;   // Slam (or your third combo row)
+		activeRow = 9;
 		totalFrames = 5;
 		currentFrameDuration = 0.07f;
 		loop = false;
 	}
 	else if (m_state == State::Attack4)
 	{
-		activeRow = 10;      // Spin Attack row
+		activeRow = 10;
 		totalFrames = 6;
 		currentFrameDuration = 0.07f;
 		loop = false;
@@ -391,7 +394,6 @@ void Player::updateAnimation( float deltaTime)
 		}
 		else if (m_state == State::Death)
 		{
-			// stay on last death frame
 			m_currentFrame = totalFrames - 1;
 		}
 	}
@@ -403,7 +405,7 @@ void Player::updateAnimation( float deltaTime)
 	if (m_direction == Direction::Left)
 		m_sprite.setScale({ -m_scale, m_scale });
 	else
-		m_sprite.setScale({ m_scale, m_scale });  
+		m_sprite.setScale({ m_scale, m_scale });
 }
 
 void Player::draw(sf::RenderWindow& window)
@@ -484,6 +486,16 @@ void Player::setHorizontalInput(int dir, bool running)
 {
 	m_inputDir = dir;
 	m_isRunning = running;
+}
+
+void Player::setBlocking(bool blocking)
+{
+	m_isBlocking = blocking;
+}
+
+bool Player::isBlocking() const
+{
+	return m_isBlocking && !isDead() && m_state != State::Hit;
 }
 
 

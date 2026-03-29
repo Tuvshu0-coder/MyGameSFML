@@ -6,7 +6,7 @@ class Player
 {
 public:
     enum class Direction { Left, Right };
-    enum class State { Idle, Walk, Run, Attack1, Attack2, Attack3, Attack4, Hit, Death };
+    enum class State { Idle, Walk, Run, Block, Attack1, Attack2, Attack3, Attack4, Hit, Death };
 
     Player();
 
@@ -24,10 +24,13 @@ public:
     void draw(sf::RenderWindow& window);
     void setHorizontalInput(int inputDir, bool isRunning);
 
+    void setBlocking(bool blocking);
+    bool isBlocking() const;
+
     sf::FloatRect getGlobalBounds() const;
     sf::Vector2f getCenter() const;
 
-    bool consumeAttackHit(); // one hit trigger per attack stage
+    bool consumeAttackHit();
     void takeDamage(int amount);
     int getHealth() const;
     int getMaxHealth() const;
@@ -41,26 +44,23 @@ private:
     sf::Texture m_texture;
     sf::Sprite m_sprite;
 
-    // --- INPUT / RUNTIME STATE ---
     float m_velocityX = 0.f;
     float m_velocityY = 0.f;
     int m_inputDir = 0;
     bool m_isRunning = false;
     bool m_isGrounded = false;
+    bool m_isBlocking = false;
 
-    // --- ATTACK / COMBO ---
     bool m_isAttacking = false;
     bool m_queueNextAttack = false;
     bool m_attackHitConsumed = false;
-    int m_comboStep = 0;               // 0=none, 1..4 combo stage
+    int m_comboStep = 0;
     float m_comboTimer = 0.f;
     float m_comboTimeout = 0.35f;
 
-    // --- STATS ---
-    int m_health = 500;
-    int m_maxHealth = 500;
+    int m_health = 350;
+    int m_maxHealth = 350;
 
-    // --- TUNING (edit these only) ---
     float m_scale = 1.f;
     float m_referenceScale = 2.f;
 

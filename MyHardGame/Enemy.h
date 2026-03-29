@@ -25,6 +25,9 @@ public:
 	int getHealth() const;
 	int getMaxHealth() const;
 
+	void stun(float seconds);
+	bool isStunned() const;
+
 private:
 	void setState(State state);
 	void updateAnimation(float deltaTime);
@@ -61,7 +64,7 @@ private:
 
 	float m_idleFrameDuration = 0.10f;
 	float m_runFrameDuration = 0.10f;
-	float m_attackFrameDuration = 0.055f;
+	float m_attackFrameDuration = 0.08f;
 	float m_hitFrameDuration = 0.08f;
 	float m_deathFrameDuration = 0.08f;
 
@@ -83,4 +86,7 @@ private:
 
 	int m_health = 200;
 	int m_maxHealth = 200;
+
+	float m_stunTimer = 0.f;
+	float m_defaultStunDuration = 0.6f;
 };
