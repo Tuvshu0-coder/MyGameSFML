@@ -46,39 +46,84 @@ void Player::applyGravity(float deltaTime)
 	m_sprite.move({ 0.f, m_velocityY * deltaTime });
 }
 
+void Player::attack()
+{
+	if (!m_isAttacking)
+	{
+		// If you press again quickly after previous slash, continue combo.
+		const int nextCombo = (m_comboStep <= 0) ? 1 : (m_comboStep < 3 ? m_comboStep + 1 : 1);
+		startAttack(nextCombo);
+	}
+	else if (m_comboStep < 4)
+	{
+		// Buffer next combo step while current attack is playing
+		m_queueNextAttack = true;
+	}
+}
+
+void Player::startAttack(int comboIndex)
+{
+	m_isAttacking = true;
+	m_queueNextAttack = false;
+	m_comboStep = comboIndex;
+	m_comboTimer = 0.f;
+
+	if (comboIndex == 1) setState(State::Attack1);
+	else if (comboIndex == 2) setState(State::Attack2);
+	else if (comboIndex == 3) setState(State::Attack3);
+	else setState(State::Attack4);
+}
+
 void Player::update(float deltaTime, sf::Vector2u windowSize)
 {
 	const float scaleFactor = getScaleFactor();
 	const float currentMaxSpeed = (m_isRunning ? m_runSpeed : m_walkSpeed) * scaleFactor;
 
+	// Combo expires if you wait too long between attacks
+	if (!m_isAttacking && m_comboStep > 0)
+	{
+		m_comboTimer += deltaTime;
+		if (m_comboTimer >= m_comboTimeout)
+			m_comboStep = 0;
+	}
+
 	// Always allow changing facing direction based on input
 	if (m_inputDir == -1) setDirection(Direction::Left);
 	if (m_inputDir == 1) setDirection(Direction::Right);
 
-	if (m_isGrounded)
+	if (!m_isAttacking)
 	{
-		// ON GROUND: Tight control. Instantly match target speed.
-		m_velocityX = static_cast<float>(m_inputDir) * currentMaxSpeed;
+		if (m_isGrounded)
+		{
+			// ON GROUND: Tight control. Instantly match target speed.
+			m_velocityX = static_cast<float>(m_inputDir) * currentMaxSpeed;
 
-		// Handle animation states cleanly
-		if (m_inputDir != 0)
-			setState(m_isRunning ? State::Run : State::Walk);
+			// Handle animation states cleanly
+			if (m_inputDir != 0)
+				setState(m_isRunning ? State::Run : State::Walk);
+			else
+				setState(State::Idle);
+		}
 		else
-			setState(State::Idle);
+		{
+			// IN AIR: Air strafing!
+			// Allow them to move, but cap it at the max speed so they don't go flying too fast.
+			if (m_inputDir != 0)
+			{
+				// Give them control in the air...
+				m_velocityX += static_cast<float>(m_inputDir) * (m_airAcceleration * scaleFactor) * deltaTime;
+			}
+
+			// Clamp the velocity so they never exceed currentMaxSpeed mid-air!
+			if (m_velocityX > currentMaxSpeed) m_velocityX = currentMaxSpeed;
+			if (m_velocityX < -currentMaxSpeed) m_velocityX = -currentMaxSpeed;
+		}
 	}
 	else
 	{
-		// IN AIR: Air strafing!
-		// Allow them to move, but cap it at the max speed so they don't go flying too fast.
-		if (m_inputDir != 0)
-		{
-			// Give them control in the air...
-			m_velocityX += static_cast<float>(m_inputDir) * (m_airAcceleration * scaleFactor) * deltaTime;
-		}
-
-		// Clamp the velocity so they never exceed currentMaxSpeed mid-air!
-		if (m_velocityX > currentMaxSpeed) m_velocityX = currentMaxSpeed;
-		if (m_velocityX < -currentMaxSpeed) m_velocityX = -currentMaxSpeed;
+		// Freeze horizontal movement during attack on ground
+		if (m_isGrounded)
+			m_velocityX = 0.f;
 	}
 
 	// Actually move the sprite horizontally based on momentum!
@@ -139,8 +184,9 @@ void Player::updateAnimation( float deltaTime)
 
 	// Reset frame duration to default every frame. We will override it if we are running.
 	float currentFrameDuration = m_frameDuration;
+	bool loop = true;
 
-	if (m_state == State::Idle) 
+	if (m_state == State::Idle)
 	{
 		activeRow = 1;
 		totalFrames = 9;
@@ -150,26 +196,88 @@ void Player::updateAnimation( float deltaTime)
 		activeRow = 2;
 		totalFrames = 8;
 	}
-	else if (m_state == State::Run) // ADD THIS
+	else if (m_state == State::Run)
 	{
-		activeRow = 4;       // Row 3 based on your notes
-		totalFrames = 8;     // 8 frames based on your notes
-		currentFrameDuration = 0.08f; // Make the run animation play almost twice as fast!
+		activeRow = 4;
+		totalFrames = 8;
+		currentFrameDuration = 0.08f;
+	}
+	else if (m_state == State::Attack1)
+	{
+		activeRow = 7;   // Slash 1
+		totalFrames = 7;
+		currentFrameDuration = 0.06f;
+		loop = false;
+	}
+	else if (m_state == State::Attack2)
+	{
+		activeRow = 8;   // Slash 2
+		totalFrames = 5;
+		currentFrameDuration = 0.06f;
+		loop = false;
+	}
+	else if (m_state == State::Attack3)
+	{
+		activeRow = 9;   // Slam (or your third combo row)
+		totalFrames = 5;
+		currentFrameDuration = 0.07f;
+		loop = false;
+	}
+	else if (m_state == State::Attack4)
+	{
+		activeRow = 10;      // Spin Attack row
+		totalFrames = 6;
+		currentFrameDuration = 0.07f;
+		loop = false;
 	}
 
-	if (m_animationTimer >= currentFrameDuration)
+	bool finished = false;
+	while (m_animationTimer >= currentFrameDuration)
 	{
 		m_animationTimer -= currentFrameDuration;
-		m_currentFrame = (m_currentFrame + 1) % totalFrames;
+
+		if (loop)
+		{
+			m_currentFrame = (m_currentFrame + 1) % totalFrames;
+		}
+		else
+		{
+			if (m_currentFrame < totalFrames - 1)
+				++m_currentFrame;
+			else
+			{
+				finished = true;
+				break;
+			}
+		}
 	}
 
-	int leftOffset = m_currentFrame * m_frameSize.x;
-	int topOffset = activeRow * m_frameSize.y;
+	if (finished && m_isAttacking)
+	{
+		if (m_queueNextAttack && m_comboStep < 4)
+			startAttack(m_comboStep + 1);
+		else
+		{
+			m_isAttacking = false;
+			m_queueNextAttack = false;
+			m_comboTimer = 0.f;
 
+			if (m_inputDir != 0)
+				setState(m_isRunning ? State::Run : State::Walk);
+			else
+				setState(State::Idle);
+		}
+
+		updateAnimation(0.f);
+		return;
+	}
+
+	const int leftOffset = m_currentFrame * m_frameSize.x;
+	const int topOffset = activeRow * m_frameSize.y;
 	m_sprite.setTextureRect(sf::IntRect({ leftOffset, topOffset }, { m_frameSize.x, m_frameSize.y }));
 
 	if (m_direction == Direction::Left)
-		m_sprite.setScale({ -m_scale, m_scale }); 
+		m_sprite.setScale({ -m_scale, m_scale });
 	else
 		m_sprite.setScale({ m_scale, m_scale });  
 }

@@ -143,6 +143,12 @@ void Game::processEvents()
 
 		if (const auto* resized = event->getIf<sf::Event::Resized>())
 			updateView({ resized->size.x, resized->size.y });
+
+		if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>())
+		{
+			if (keyPressed->code == sf::Keyboard::Key::J)
+				m_player.attack();
+		}
 	}
 
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space))
@@ -178,22 +184,5 @@ void Game::render()
 
 	m_window.display();
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
