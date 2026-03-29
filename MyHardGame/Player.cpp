@@ -26,24 +26,30 @@ void Player::move(float dx, float dy)
 	m_sprite.move({ dx, dy });
 }
 
+float Player::getScaleFactor() const
+{
+	return m_scale / m_referenceScale;
+}
+
 void Player::jump()
 {
 	if (m_isGrounded)
 	{
-		m_velocityY = m_jumpStrength;
+		m_velocityY = m_jumpStrength * getScaleFactor();
 		m_isGrounded = false;
 	}
 }
 
-void Player::applyGravity(float deltaTime) {
-	m_velocityY += m_gravity * deltaTime;
+void Player::applyGravity(float deltaTime)
+{
+	m_velocityY += (m_gravity * getScaleFactor()) * deltaTime;
 	m_sprite.move({ 0.f, m_velocityY * deltaTime });
 }
 
 void Player::update(float deltaTime, sf::Vector2u windowSize)
 {
-	// 1. --- PHYSICS & MOMENTUM LOGIC ---
-	float currentMaxSpeed = m_isRunning ? 200.f : 100.f;
+	const float scaleFactor = getScaleFactor();
+	const float currentMaxSpeed = (m_isRunning ? m_runSpeed : m_walkSpeed) * scaleFactor;
 
 	// Always allow changing facing direction based on input
 	if (m_inputDir == -1) setDirection(Direction::Left);
@@ -67,7 +73,7 @@ void Player::update(float deltaTime, sf::Vector2u windowSize)
 		if (m_inputDir != 0)
 		{
 			// Give them control in the air...
-			m_velocityX += static_cast<float>(m_inputDir) * 600.f * deltaTime;
+			m_velocityX += static_cast<float>(m_inputDir) * (m_airAcceleration * scaleFactor) * deltaTime;
 		}
 
 		// Clamp the velocity so they never exceed currentMaxSpeed mid-air!

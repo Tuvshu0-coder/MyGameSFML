@@ -29,27 +29,34 @@ public:
     sf::FloatRect getGlobalBounds() const;
 
 private:
-    void updateAnimation( float deltaTime);
+    void updateAnimation(float deltaTime);
+    float getScaleFactor() const;
 
     sf::Texture m_texture;
     sf::Sprite m_sprite;
-    
-    // --- NEW PHYSICS VARIABLES ---
-    float m_velocityX = 0.f;     // Tracks actual horizontal momentum
-    int m_inputDir = 0;          // -1 for Left, 1 for Right, 0 for None
-    bool m_isRunning = false;    // Are we holding shift?
 
+    // --- INPUT / RUNTIME STATE ---
+    float m_velocityX = 0.f;
     float m_velocityY = 0.f;
-    float m_gravity = 800.f;
-    float m_jumpStrength = -300.f;
+    int m_inputDir = 0;
+    bool m_isRunning = false;
     bool m_isGrounded = false;
-    float m_scale = 2.f; 
+
+    // --- TUNING (edit these only) ---
+    float m_scale = 1.f;                // visual/player size now
+    float m_referenceScale = 2.f;       // old "feel" scale to preserve behavior
+
+    float m_walkSpeed = 100.f;          // at reference scale
+    float m_runSpeed = 200.f;           // at reference scale
+    float m_airAcceleration = 600.f;    // at reference scale
+    float m_gravity = 800.f;            // at reference scale
+    float m_jumpStrength = -300.f;      // at reference scale
 
     Direction m_direction = Direction::Right;
     State m_state = State::Idle;
 
-    int m_currentFrame = 0;                 
-    float m_animationTimer = 0.f;           
-    float m_frameDuration = 0.15f;          
+    int m_currentFrame = 0;
+    float m_animationTimer = 0.f;
+    float m_frameDuration = 0.15f;
     sf::Vector2i m_frameSize{ 90, 37 };
 };
