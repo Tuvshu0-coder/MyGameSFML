@@ -3,6 +3,7 @@
 #include <vector>
 #include <optional>
 #include "Player.h"
+#include "World.h"
 
 class Game
 {
@@ -15,18 +16,20 @@ private:
 	void update(float deltaTime);
 	void render();
 	void updateView(sf::Vector2u windowSize);
+	void updateCamera();
 
 private:
 	const sf::Vector2u m_baseResolution{ 426, 240 };
 	sf::View m_view;
 
+	sf::Vector2u m_worldPixelSize{ 426, 240 };
+
 	sf::RenderWindow m_window;
 	Player m_player;
+	World m_world;
 
 	sf::Texture m_backgroundTexture;
 	std::optional<sf::Sprite> m_background;
 
-	sf::Texture m_groundTexture;
-	sf::RectangleShape m_groundDirt;
 	std::vector<sf::FloatRect> m_platforms;
 };

@@ -12,47 +12,35 @@ Game::Game() : m_window(sf::VideoMode({ 854, 480 }), "Learning SFML game dev")
 	updateView(m_window.getSize());
 
 	if (!m_player.load("Assets/playerSheet.png", m_baseResolution))
-		std::cerr << "Failed to load player texture!  fix the clanker\n";
+		std::cerr << "Failed to load player texture! fix the clanker\n";
+
+	if (!m_world.loadFromTmx("Assets/Maps/level01.tmx"))
+	{
+		std::cerr << "Failed to load TMX map: Assets/Maps/level01.tmx\n";
+	}
+	else
+	{
+		m_worldPixelSize = m_world.getPixelSize();
+		m_platforms = m_world.getColliders();
+	}
 
 	if (!m_backgroundTexture.loadFromFile("Assets/background.png"))
 		std::cerr << "Failed to load background texture!\n";
 
 	m_background.emplace(m_backgroundTexture);
 	const auto bgSize = m_backgroundTexture.getSize();
-	const float baseWidth = static_cast<float>(m_baseResolution.x);
-	const float baseHeight = static_cast<float>(m_baseResolution.y);
+	const float worldWidth = static_cast<float>(m_worldPixelSize.x);
+	const float worldHeight = static_cast<float>(m_worldPixelSize.y);
 
-	const float scaleX = baseWidth / static_cast<float>(bgSize.x);
-	const float scaleY = baseHeight / static_cast<float>(bgSize.y);
+	const float scaleX = worldWidth / static_cast<float>(bgSize.x);
+	const float scaleY = worldHeight / static_cast<float>(bgSize.y);
 	const float scale = std::max(scaleX, scaleY);
 
 	m_background->setScale({ scale, scale });
 
 	const float bgWidth = static_cast<float>(bgSize.x) * scale;
 	const float bgHeight = static_cast<float>(bgSize.y) * scale;
-	m_background->setPosition({ (baseWidth - bgWidth) * 0.5f, (baseHeight - bgHeight) * 0.5f });
-
-	// 1. IMPORTANT: Load ONLY the 16x16 block into the texture using the third argument (second is sRgb)
-	if (!m_groundTexture.loadFromFile("Assets/ground.png", false, sf::IntRect({ 71, 16 }, { 16, 16 })))
-		std::cerr << "Failed to load ground texture!\n";
-
-	m_groundTexture.setRepeated(true);
-	
-	// Optional but highly recommended for pixel art:
-	m_groundTexture.setSmooth(false); 
-
-	const float groundHeight = 16.f; // total ground height on screen
-	const float groundTop = baseHeight - groundHeight;
-
-	m_groundDirt.setSize({ baseWidth, groundHeight });
-	m_groundDirt.setPosition({ 0.f, groundTop });
-	m_groundDirt.setTexture(&m_groundTexture);
-	
-	// 2. Set TextureRect to start at 0, 0 and stretch to width (BaseResolution.x) and height.
-	// Since the texture IS ONLY 16x16 now, it will repeat that tiny image perfectly.
-	m_groundDirt.setTextureRect(sf::IntRect({ 0, 0 }, { static_cast<int>(m_baseResolution.x), static_cast<int>(groundHeight) }));
-
-	m_platforms.push_back(sf::FloatRect({ 0.f, groundTop }, { baseWidth, groundHeight }));
+	m_background->setPosition({ (worldWidth - bgWidth) * 0.5f, (worldHeight - bgHeight) * 0.5f });
 }
 
 void Game::updateView(sf::Vector2u windowSize)
@@ -76,14 +64,38 @@ void Game::updateView(sf::Vector2u windowSize)
 	m_window.setView(m_view);
 }
 
-// </ground>
+void Game::updateCamera()
+{
+	const sf::FloatRect playerBounds = m_player.getGlobalBounds();
+	float targetX = playerBounds.position.x + playerBounds.size.x * 0.5f;
+	float targetY = playerBounds.position.y + playerBounds.size.y * 0.5f;
+
+	const float halfViewW = m_view.getSize().x * 0.5f;
+	const float halfViewH = m_view.getSize().y * 0.5f;
+	const float worldW = static_cast<float>(m_worldPixelSize.x);
+	const float worldH = static_cast<float>(m_worldPixelSize.y);
+
+	if (worldW <= m_view.getSize().x)
+		targetX = worldW * 0.5f;
+	else
+		targetX = std::clamp(targetX, halfViewW, worldW - halfViewW);
+
+	if (worldH <= m_view.getSize().y)
+		targetY = worldH * 0.5f;
+	else
+		targetY = std::clamp(targetY, halfViewH, worldH - halfViewH);
+
+	m_view.setCenter({ targetX, targetY });
+	m_window.setView(m_view);
+}
+
 void Game::run()
 {
 	sf::Clock clock;
 
 	while (m_window.isOpen())
 	{
-		float deltaTime = clock.restart().asSeconds();
+		const float deltaTime = clock.restart().asSeconds();
 
 		processEvents();
 		update(deltaTime);
@@ -99,38 +111,40 @@ void Game::processEvents()
 			m_window.close();
 
 		if (const auto* resized = event->getIf<sf::Event::Resized>())
-		{
 			updateView({ resized->size.x, resized->size.y });
-		}
 	}
 
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space))
 		m_player.jump();
 }
 
-void Game::update(float deltaTime) 
+void Game::update(float deltaTime)
 {
 	int inputDir = 0;
-	bool isRunning = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LShift);
+	const bool isRunning = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LShift);
 
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A)) inputDir = -1;
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D)) inputDir = 1;
 
-	// Tell the player the raw output of the keyboard
 	m_player.setHorizontalInput(inputDir, isRunning);
-
 	m_player.applyGravity(deltaTime);
-	m_player.update(deltaTime, m_baseResolution); 
-	m_player.resolveCollisions(m_platforms); 
+	m_player.update(deltaTime, m_worldPixelSize);
+	m_player.resolveCollisions(m_platforms);
+
+	updateCamera();
 }
 
 void Game::render()
 {
 	m_window.clear();
+
 	if (m_background)
 		m_window.draw(*m_background);
-	m_window.draw(m_groundDirt);
+
+	m_world.drawBack(m_window);
 	m_player.draw(m_window);
+	m_world.drawFront(m_window);
+
 	m_window.display();
 }
 

@@ -181,24 +181,63 @@ sf::FloatRect  Player::getGlobalBounds() const
 void Player::resolveCollisions(const std::vector<sf::FloatRect>& platforms)
 {
 	m_isGrounded = false;
-	auto bounds = m_sprite.getGlobalBounds();
+
+	const float bodyHalfWidth = 5.f * m_scale;   // keep consistent with your movement bounds
+	const float bodyHeight = 28.f * m_scale;     // tune if needed (try 24..32)
+
+	auto getBodyBounds = [&]() -> sf::FloatRect
+	{
+		const sf::Vector2f p = m_sprite.getPosition(); // feet-ish anchor
+		return sf::FloatRect(
+			{ p.x - bodyHalfWidth, p.y - bodyHeight },
+			{ bodyHalfWidth * 2.f, bodyHeight }
+		);
+	};
+
+	sf::FloatRect bounds = getBodyBounds();
 
 	for (const auto& platform : platforms)
 	{
-		if (const auto intersection = bounds.findIntersection(platform))
+		const auto intersection = bounds.findIntersection(platform);
+		if (!intersection)
+			continue;
+
+		const float overlapX = intersection->size.x;
+		const float overlapY = intersection->size.y;
+
+		// Prefer vertical resolution for platformer feel
+		if (overlapY <= overlapX)
 		{
+			const float boundsBottom = bounds.position.y + bounds.size.y;
 			const float platformTop = platform.position.y;
-			
-			// Because the origin is at his feet, m_sprite.getPosition().y IS his feet line.
-			// Compare his feet to the platform top.
-			if (m_velocityY >= 0.f && m_sprite.getPosition().y - intersection->size.y <= platformTop)
+
+			// Landing from above
+			if (m_velocityY >= 0.f && boundsBottom - overlapY <= platformTop + 1.f)
 			{
-				m_sprite.setPosition({ m_sprite.getPosition().x, platformTop});
+				m_sprite.move({ 0.f, -overlapY });
 				m_velocityY = 0.f;
 				m_isGrounded = true;
-				
+			}
+			else
+			{
+				// Ceiling hit / fallback
+				m_sprite.move({ 0.f, overlapY });
+				if (m_velocityY < 0.f)
+					m_velocityY = 0.f;
 			}
 		}
+		else
+		{
+			// Wall collision
+			if (bounds.position.x < platform.position.x)
+				m_sprite.move({ -overlapX, 0.f });
+			else
+				m_sprite.move({ overlapX, 0.f });
+
+			m_velocityX = 0.f;
+		}
+
+		bounds = getBodyBounds();
 	}
 }
 
