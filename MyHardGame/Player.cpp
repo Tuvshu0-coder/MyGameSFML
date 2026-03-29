@@ -42,29 +42,68 @@ void Player::applyGravity(float deltaTime) {
 
 void Player::update(float deltaTime, sf::Vector2u windowSize)
 {
+	// 1. --- PHYSICS & MOMENTUM LOGIC ---
+	float currentMaxSpeed = m_isRunning ? 200.f : 100.f;
+
+	// Always allow changing facing direction based on input
+	if (m_inputDir == -1) setDirection(Direction::Left);
+	if (m_inputDir == 1) setDirection(Direction::Right);
+
+	if (m_isGrounded)
+	{
+		// ON GROUND: Tight control. Instantly match target speed.
+		m_velocityX = static_cast<float>(m_inputDir) * currentMaxSpeed;
+
+		// Handle animation states cleanly
+		if (m_inputDir != 0)
+			setState(m_isRunning ? State::Run : State::Walk);
+		else
+			setState(State::Idle);
+	}
+	else
+	{
+		// IN AIR: Air strafing!
+		// Allow them to move, but cap it at the max speed so they don't go flying too fast.
+		if (m_inputDir != 0)
+		{
+			// Give them control in the air...
+			m_velocityX += static_cast<float>(m_inputDir) * 600.f * deltaTime;
+		}
+
+		// Clamp the velocity so they never exceed currentMaxSpeed mid-air!
+		if (m_velocityX > currentMaxSpeed) m_velocityX = currentMaxSpeed;
+		if (m_velocityX < -currentMaxSpeed) m_velocityX = -currentMaxSpeed;
+	}
+
+	// Actually move the sprite horizontally based on momentum!
+	m_sprite.move({ m_velocityX * deltaTime, 0.f });
+
+	// 2. --- EXISTING SCREEN BOUNDS LOGIC ---
 	sf::Vector2f pos = m_sprite.getPosition();
-	//sf::FloatRect bounds = m_sprite.getGlobalBounds();
 	float winWidth = static_cast<float>(windowSize.x);
 	float winHeight = static_cast<float>(windowSize.y);
 
-	//floor and ceiling
+	// floor and ceiling bounds check
 	if (pos.y > winHeight) {
 		pos.y = winHeight;
 		m_velocityY = 0.f;
 		m_isGrounded = true;
 	}
-	else m_isGrounded = false;
 
-	//Calculate a realistic collision width for the player's body
-	// Multiply by m_scale so the hitbox grows with the sprite!
+	// Because of origin, bounds checking uses body width
 	const float bodyHalfWidth = 5.f * m_scale;
-
-	if (pos.x - bodyHalfWidth < 0.f) pos.x = bodyHalfWidth;
-	if (pos.x + bodyHalfWidth > winWidth) pos.x = winWidth - bodyHalfWidth;
+	if (pos.x - bodyHalfWidth < 0.f)
+	{
+		pos.x = bodyHalfWidth;
+		m_velocityX = 0.f;		
+	}
+	if (pos.x + bodyHalfWidth > winWidth)
+	{
+		pos.x = winWidth - bodyHalfWidth;
+		m_velocityX = 0.f;		
+	}
 	
-
 	m_sprite.setPosition(pos);
-	
 	updateAnimation(deltaTime); 
 
 }
@@ -161,6 +200,13 @@ void Player::resolveCollisions(const std::vector<sf::FloatRect>& platforms)
 			}
 		}
 	}
+}
+
+
+void Player::setHorizontalInput(int dir, bool running)
+{
+	m_inputDir = dir;
+	m_isRunning = running;
 }
 
 

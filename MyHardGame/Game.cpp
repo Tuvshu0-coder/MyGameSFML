@@ -110,46 +110,18 @@ void Game::processEvents()
 
 void Game::update(float deltaTime) 
 {
-	/*const float move = m_player.getSpeed() * deltaTime;*/
-	bool isMoving = false; // Add a flag to track if we pressed a movement key
+	int inputDir = 0;
 	bool isRunning = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LShift);
 
-	if (isRunning)
-		m_player.setSpeed(187.f);
-	else
-		m_player.setSpeed(100.f);
-	
-	const float moveAmount = m_player.getSpeed() * deltaTime;
+	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A)) inputDir = -1;
+	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D)) inputDir = 1;
 
-	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A))
-	{
-		m_player.move(-moveAmount, 0.f);
-		m_player.setDirection(Player::Direction::Left);
-		isMoving = true;
-	}
-	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
-	{
-		m_player.move(moveAmount, 0.f);
-		m_player.setDirection(Player::Direction::Right);
-		isMoving = true;
-	}
-	if (isMoving)
-	{
-		if (isRunning)
-			m_player.setState(Player::State::Run);
-		else
-			m_player.setState(Player::State::Walk);
-	}
-	else
-	{
-		m_player.setState(Player::State::Idle);
-	}
+	// Tell the player the raw output of the keyboard
+	m_player.setHorizontalInput(inputDir, isRunning);
 
 	m_player.applyGravity(deltaTime);
-	// Pass deltaTime as the first argument here!
 	m_player.update(deltaTime, m_baseResolution); 
-	m_player.resolveCollisions(m_platforms); //ground
-	
+	m_player.resolveCollisions(m_platforms); 
 }
 
 void Game::render()
@@ -161,6 +133,15 @@ void Game::render()
 	m_player.draw(m_window);
 	m_window.display();
 }
+
+
+
+
+
+
+
+
+
 
 
 
