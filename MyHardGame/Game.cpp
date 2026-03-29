@@ -64,9 +64,10 @@ void Game::updateView(sf::Vector2u windowSize)
 	m_window.setView(m_view);
 }
 
-void Game::updateCamera()
+void Game::updateCamera(float deltaTime)
 {
 	const sf::FloatRect playerBounds = m_player.getGlobalBounds();
+
 	float targetX = playerBounds.position.x + playerBounds.size.x * 0.5f;
 	float targetY = playerBounds.position.y + playerBounds.size.y * 0.5f;
 
@@ -75,6 +76,7 @@ void Game::updateCamera()
 	const float worldW = static_cast<float>(m_worldPixelSize.x);
 	const float worldH = static_cast<float>(m_worldPixelSize.y);
 
+	// Clamp target to world bounds first
 	if (worldW <= m_view.getSize().x)
 		targetX = worldW * 0.5f;
 	else
@@ -85,7 +87,35 @@ void Game::updateCamera()
 	else
 		targetY = std::clamp(targetY, halfViewH, worldH - halfViewH);
 
-	m_view.setCenter({ targetX, targetY });
+	sf::Vector2f center = m_view.getCenter();
+
+	// Dead-zone to remove tiny jitter
+	if (std::abs(targetX - center.x) <= m_cameraDeadZone)
+		targetX = center.x;
+	if (std::abs(targetY - center.y) <= m_cameraDeadZone)
+		targetY = center.y;
+
+	// Exponential smoothing (frame-rate independent)
+	const float alpha = 1.f - std::exp(-m_cameraFollowSpeed * deltaTime);
+	center.x += (targetX - center.x) * alpha;
+	center.y += (targetY - center.y) * alpha;
+
+	// Clamp final center
+	if (worldW <= m_view.getSize().x)
+		center.x = worldW * 0.5f;
+	else
+		center.x = std::clamp(center.x, halfViewW, worldW - halfViewW);
+
+	if (worldH <= m_view.getSize().y)
+		center.y = worldH * 0.5f;
+	else
+		center.y = std::clamp(center.y, halfViewH, worldH - halfViewH);
+
+	// Pixel snap helps pixel-art shimmer
+	center.x = std::round(center.x);
+	center.y = std::round(center.y);
+
+	m_view.setCenter(center);
 	m_window.setView(m_view);
 }
 
@@ -95,7 +125,8 @@ void Game::run()
 
 	while (m_window.isOpen())
 	{
-		const float deltaTime = clock.restart().asSeconds();
+		float deltaTime = clock.restart().asSeconds();
+		deltaTime = std::min(deltaTime, 1.f / 30.f); // avoid huge spikes
 
 		processEvents();
 		update(deltaTime);
@@ -131,7 +162,7 @@ void Game::update(float deltaTime)
 	m_player.update(deltaTime, m_worldPixelSize);
 	m_player.resolveCollisions(m_platforms);
 
-	updateCamera();
+	updateCamera(deltaTime);
 }
 
 void Game::render()
