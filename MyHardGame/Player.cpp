@@ -43,7 +43,7 @@ void Player::applyGravity(float deltaTime) {
 void Player::update(float deltaTime, sf::Vector2u windowSize)
 {
 	sf::Vector2f pos = m_sprite.getPosition();
-	sf::FloatRect bounds = m_sprite.getGlobalBounds();
+	//sf::FloatRect bounds = m_sprite.getGlobalBounds();
 	float winWidth = static_cast<float>(windowSize.x);
 	float winHeight = static_cast<float>(windowSize.y);
 
@@ -55,8 +55,13 @@ void Player::update(float deltaTime, sf::Vector2u windowSize)
 	}
 	else m_isGrounded = false;
 
-	if (pos.x < 0.f) pos.x = 0.f;
-	if (pos.x + bounds.size.x > winWidth) pos.x = winWidth - bounds.size.x;
+	//Calculate a realistic collision width for the player's body
+	// Multiply by m_scale so the hitbox grows with the sprite!
+	const float bodyHalfWidth = 5.f * m_scale;
+
+	if (pos.x - bodyHalfWidth < 0.f) pos.x = bodyHalfWidth;
+	if (pos.x + bodyHalfWidth > winWidth) pos.x = winWidth - bodyHalfWidth;
+	
 
 	m_sprite.setPosition(pos);
 	
@@ -82,44 +87,13 @@ void Player::setState(State state)
 
 void Player::updateAnimation( float deltaTime)
 {
-	/*if (m_direction == Direction::Left)
-		m_sprite.setTextureRect(sf::IntRect({ 0, 0 }, { 80, 80 }));
-	else
-		m_sprite.setTextureRect(sf::IntRect({ 80, 0 }, { 80, 80 }));*/
-
-	// 1. Advance the timer
 	m_animationTimer += deltaTime;
 
-	// 2. Setup variables for which row on the image to read, and how many frames it has
 	int activeRow = 0;
 	int totalFrames = 1;
 
-	// Set row and frame cound based on the current state.
-	// Check your sprute to confirm if Idle is Row 0 and Walk is Row 1.
-	// Static Idle = Row0  (1)
-	// Idle        = Row1  (9)
-	// Walk		   = Row2  (8)
-	// Run		   = Row3  (8)
-	// Fast Run    = Row4  (8)
-	// Roll		   = Row5  (8)
-	// Roll attack = Row6  (10)
-	// Slash 1     = Row7  (7)
-	// Slash 2     = Row8  (5)
-	// Slam		   = Row9  (5)
-	// Spin Attack = Row10 (6)
-	// Block	   = Row11 (6)
-	// Dash		   = Row12 (6)
-	// JumpUp	   = Row13 (3)
-	// JumpMid	   = Row14 (4)
-	// Falling	   = Row15 (3)
-	// Land		   = Row19 (4)
-	// Ledge grab  = Row20 (5)
-	// Wall Hold   = Row21 (1)
-	// WallTrans   = Row22 (2)
-	// WallSLide   = Row23 (3)
-	// WallStop    = Row24 (3)
-	// Get hit     = Row25 (2)
-	// Death	   = Row26 (6)
+	// Reset frame duration to default every frame. We will override it if we are running.
+	float currentFrameDuration = m_frameDuration;
 
 	if (m_state == State::Idle) 
 	{
@@ -131,32 +105,28 @@ void Player::updateAnimation( float deltaTime)
 		activeRow = 2;
 		totalFrames = 8;
 	}
-
-	// 3. Switch frame if enough time has passed
-	if (m_animationTimer >= m_frameDuration)
+	else if (m_state == State::Run) // ADD THIS
 	{
-		// Subtract frame if enough time has passed
-		m_animationTimer -= m_frameDuration;
+		activeRow = 4;       // Row 3 based on your notes
+		totalFrames = 8;     // 8 frames based on your notes
+		currentFrameDuration = 0.08f; // Make the run animation play almost twice as fast!
+	}
 
-		//Move to next frame, and use modulo to loop back to 0 when it hist totalFrames
+	if (m_animationTimer >= currentFrameDuration)
+	{
+		m_animationTimer -= currentFrameDuration;
 		m_currentFrame = (m_currentFrame + 1) % totalFrames;
 	}
-	// 4. Calculate the bounding box for this specific frame
-	// X position is (current frame * 90), Y position is (current row * 37)
+
 	int leftOffset = m_currentFrame * m_frameSize.x;
 	int topOffset = activeRow * m_frameSize.y;
 
 	m_sprite.setTextureRect(sf::IntRect({ leftOffset, topOffset }, { m_frameSize.x, m_frameSize.y }));
 
-	// 5. Flip the sprite based on direction
-	// Because out origin is perfectly positioned underneath him, scaling X by -1 flips him in place!
-
 	if (m_direction == Direction::Left)
-		m_sprite.setScale({ -1.f, 1.f });
+		m_sprite.setScale({ -m_scale, m_scale }); 
 	else
-		m_sprite.setScale({ 1.f, 1.f });
-	
-
+		m_sprite.setScale({ m_scale, m_scale });  
 }
 
 void Player::draw(sf::RenderWindow& window)

@@ -110,26 +110,38 @@ void Game::processEvents()
 
 void Game::update(float deltaTime) 
 {
-	const float move = m_player.getSpeed() * deltaTime;
+	/*const float move = m_player.getSpeed() * deltaTime;*/
 	bool isMoving = false; // Add a flag to track if we pressed a movement key
+	bool isRunning = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LShift);
+
+	if (isRunning)
+		m_player.setSpeed(187.f);
+	else
+		m_player.setSpeed(100.f);
+	
+	const float moveAmount = m_player.getSpeed() * deltaTime;
 
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A))
 	{
-		m_player.move(-move, 0.f);
+		m_player.move(-moveAmount, 0.f);
 		m_player.setDirection(Player::Direction::Left);
 		isMoving = true;
 	}
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
 	{
-		m_player.move(move, 0.f);
+		m_player.move(moveAmount, 0.f);
 		m_player.setDirection(Player::Direction::Right);
 		isMoving = true;
 	}
 	if (isMoving)
 	{
-		m_player.setState(Player::State::Walk);
+		if (isRunning)
+			m_player.setState(Player::State::Run);
+		else
+			m_player.setState(Player::State::Walk);
 	}
-	else {
+	else
+	{
 		m_player.setState(Player::State::Idle);
 	}
 
