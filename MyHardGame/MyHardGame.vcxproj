@@ -130,8 +130,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Enemy.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="World.cpp" />
+    <ClInclude Include="Enemy.h" />
     <ClInclude Include="Game.h" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Player.cpp" />

@@ -41,6 +41,11 @@ Game::Game() : m_window(sf::VideoMode({ 854, 480 }), "Learning SFML game dev")
 	const float bgWidth = static_cast<float>(bgSize.x) * scale;
 	const float bgHeight = static_cast<float>(bgSize.y) * scale;
 	m_background->setPosition({ (worldWidth - bgWidth) * 0.5f, (worldHeight - bgHeight) * 0.5f });
+
+	// Enemy spawn near right side, on ground top line (adjust if needed)
+	const sf::Vector2f enemySpawn{ worldWidth - 40.f, 256.f };
+	if (!m_enemy.load("Assets/enemySheet.png", enemySpawn))
+		std::cerr << "Failed to load enemy sheet!\n";
 }
 
 void Game::updateView(sf::Vector2u windowSize)
@@ -168,7 +173,65 @@ void Game::update(float deltaTime)
 	m_player.update(deltaTime, m_worldPixelSize);
 	m_player.resolveCollisions(m_platforms);
 
+	m_enemy.update(deltaTime, m_player.getCenter());
+
+	// Player -> Enemy hit
+	if (!m_enemy.isDead() && m_player.consumeAttackHit())
+	{
+		const float dist = std::abs(m_player.getCenter().x - m_enemy.getCenter().x);
+		if (dist <= 50.f)
+			m_enemy.takeDamage(15);
+	}
+
+	// Enemy -> Player hit (2 hit points in enemy attack anim)
+	if (!m_player.isDead() && m_enemy.consumeAttackHit())
+	{
+		const float dist = std::abs(m_player.getCenter().x - m_enemy.getCenter().x);
+		if (dist <= 35.f)
+			m_player.takeDamage(20);
+	}
+
 	updateCamera(deltaTime);
+}
+
+void Game::drawUI()
+{
+	m_window.setView(m_window.getDefaultView());
+
+	const float barW = 140.f;
+	const float barH = 12.f;
+
+	// Player HP bar (top-left)
+	sf::RectangleShape playerBg({ barW, barH });
+	playerBg.setPosition({ 12.f, 12.f });
+	playerBg.setFillColor(sf::Color(40, 40, 40));
+	playerBg.setOutlineThickness(1.f);
+	playerBg.setOutlineColor(sf::Color::White);
+
+	const float playerRatio = static_cast<float>(m_player.getHealth()) / static_cast<float>(m_player.getMaxHealth());
+	sf::RectangleShape playerHp({ barW * std::clamp(playerRatio, 0.f, 1.f), barH });
+	playerHp.setPosition({ 12.f, 12.f });
+	playerHp.setFillColor(sf::Color(80, 220, 90));
+
+	m_window.draw(playerBg);
+	m_window.draw(playerHp);
+
+	// Enemy HP bar (top-right)
+	sf::RectangleShape enemyBg({ barW, barH });
+	enemyBg.setPosition({ static_cast<float>(m_window.getSize().x) - barW - 12.f, 12.f });
+	enemyBg.setFillColor(sf::Color(40, 40, 40));
+	enemyBg.setOutlineThickness(1.f);
+	enemyBg.setOutlineColor(sf::Color::White);
+
+	const float enemyRatio = static_cast<float>(m_enemy.getHealth()) / static_cast<float>(m_enemy.getMaxHealth());
+	sf::RectangleShape enemyHp({ barW * std::clamp(enemyRatio, 0.f, 1.f), barH });
+	enemyHp.setPosition({ static_cast<float>(m_window.getSize().x) - barW - 12.f, 12.f });
+	enemyHp.setFillColor(sf::Color(220, 70, 70));
+
+	m_window.draw(enemyBg);
+	m_window.draw(enemyHp);
+
+	m_window.setView(m_view);
 }
 
 void Game::render()
@@ -179,8 +242,11 @@ void Game::render()
 		m_window.draw(*m_background);
 
 	m_world.drawBack(m_window);
+	m_enemy.draw(m_window);
 	m_player.draw(m_window);
 	m_world.drawFront(m_window);
+
+	drawUI();
 
 	m_window.display();
 }

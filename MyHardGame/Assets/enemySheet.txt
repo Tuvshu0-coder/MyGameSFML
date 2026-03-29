@@ -1,0 +1,5 @@
+Idle = Row1 (12)
+Run = Row2 (8)
+Slice and Dice = Row3 (14)
+hit = Row4 (2)
+Death = Row5 (15)

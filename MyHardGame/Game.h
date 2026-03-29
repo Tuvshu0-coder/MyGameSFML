@@ -4,6 +4,7 @@
 #include <optional>
 #include "Player.h"
 #include "World.h"
+#include "Enemy.h"
 
 class Game
 {
@@ -17,6 +18,7 @@ private:
 	void render();
 	void updateView(sf::Vector2u windowSize);
 	void updateCamera(float deltaTime);
+	void drawUI();
 
 private:
 	const sf::Vector2u m_baseResolution{ 426, 240 };
@@ -24,12 +26,12 @@ private:
 
 	sf::Vector2u m_worldPixelSize{ 426, 240 };
 
-	// Camera tuning
-	float m_cameraFollowSpeed = 12.f; // higher = snappier, lower = smoother
-	float m_cameraDeadZone = 2.f;     // pixels around center where camera doesn't move
+	float m_cameraFollowSpeed = 12.f;
+	float m_cameraDeadZone = 2.f;
 
 	sf::RenderWindow m_window;
 	Player m_player;
+	Enemy m_enemy;
 	World m_world;
 
 	sf::Texture m_backgroundTexture;

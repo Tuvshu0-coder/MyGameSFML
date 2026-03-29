@@ -33,6 +33,9 @@ float Player::getScaleFactor() const
 
 void Player::jump()
 {
+	if (m_state == State::Death || m_state == State::Hit)
+		return;
+
 	if (m_isGrounded)
 	{
 		m_velocityY = m_jumpStrength * getScaleFactor();
@@ -48,15 +51,16 @@ void Player::applyGravity(float deltaTime)
 
 void Player::attack()
 {
+	if (m_state == State::Death || m_state == State::Hit)
+		return;
+
 	if (!m_isAttacking)
 	{
-		// If you press again quickly after previous slash, continue combo.
-		const int nextCombo = (m_comboStep <= 0) ? 1 : (m_comboStep < 3 ? m_comboStep + 1 : 1);
+		const int nextCombo = (m_comboStep <= 0) ? 1 : (m_comboStep < 4 ? m_comboStep + 1 : 1);
 		startAttack(nextCombo);
 	}
 	else if (m_comboStep < 4)
 	{
-		// Buffer next combo step while current attack is playing
 		m_queueNextAttack = true;
 	}
 }
@@ -90,6 +94,20 @@ void Player::update(float deltaTime, sf::Vector2u windowSize)
 	// Always allow changing facing direction based on input
 	if (m_inputDir == -1) setDirection(Direction::Left);
 	if (m_inputDir == 1) setDirection(Direction::Right);
+
+	if (m_state == State::Death)
+	{
+		m_velocityX = 0.f;
+		updateAnimation(deltaTime);
+		return;
+	}
+
+	if (m_state == State::Hit)
+	{
+		m_velocityX = 0.f;
+		updateAnimation(deltaTime);
+		return;
+	}
 
 	if (!m_isAttacking)
 	{
@@ -166,13 +184,83 @@ void Player::setDirection(Direction dir)
 
 void Player::setState(State state)
 {
-	if (m_state != state) 
+	if (m_state != state)
 	{
 		m_state = state;
 		m_currentFrame = 0;
 		m_animationTimer = 0.f;
+
+		if (m_state == State::Attack1 ||
+			m_state == State::Attack2 ||
+			m_state == State::Attack3 ||
+			m_state == State::Attack4)
+		{
+			m_attackHitConsumed = false;
+		}
+	}
+}
+
+sf::Vector2f Player::getCenter() const
+{
+	const sf::FloatRect b = getGlobalBounds();
+	return { b.position.x + b.size.x * 0.5f, b.position.y + b.size.y * 0.5f };
+}
+
+bool Player::consumeAttackHit()
+{
+	if (!m_isAttacking || m_attackHitConsumed)
+		return false;
+
+	int hitFrame = 2;
+	if (m_state == State::Attack1) hitFrame = 2;
+	else if (m_state == State::Attack2) hitFrame = 2;
+	else if (m_state == State::Attack3) hitFrame = 2;
+	else if (m_state == State::Attack4) hitFrame = 3;
+	else return false;
+
+	if (m_currentFrame >= hitFrame)
+	{
+		m_attackHitConsumed = true;
+		return true;
 	}
 
+	return false;
+}
+
+void Player::takeDamage(int amount)
+{
+	if (isDead())
+		return;
+
+	m_health = std::max(0, m_health - amount);
+
+	m_isAttacking = false;
+	m_queueNextAttack = false;
+	m_velocityX = 0.f;
+
+	if (m_health <= 0)
+	{
+		setState(State::Death);
+	}
+	else
+	{
+		setState(State::Hit);
+	}
+}
+
+int Player::getHealth() const
+{
+	return m_health;
+}
+
+int Player::getMaxHealth() const
+{
+	return m_maxHealth;
+}
+
+bool Player::isDead() const
+{
+	return m_health <= 0;
 }
 
 void Player::updateAnimation( float deltaTime)
@@ -230,6 +318,20 @@ void Player::updateAnimation( float deltaTime)
 		currentFrameDuration = 0.07f;
 		loop = false;
 	}
+	else if (m_state == State::Hit)
+	{
+		activeRow = 25;
+		totalFrames = 2;
+		currentFrameDuration = 0.09f;
+		loop = false;
+	}
+	else if (m_state == State::Death)
+	{
+		activeRow = 26;
+		totalFrames = 6;
+		currentFrameDuration = 0.10f;
+		loop = false;
+	}
 
 	bool finished = false;
 	while (m_animationTimer >= currentFrameDuration)
@@ -252,24 +354,46 @@ void Player::updateAnimation( float deltaTime)
 		}
 	}
 
-	if (finished && m_isAttacking)
+	if (finished)
 	{
-		if (m_queueNextAttack && m_comboStep < 4)
-			startAttack(m_comboStep + 1);
-		else
-		{
-			m_isAttacking = false;
-			m_queueNextAttack = false;
-			m_comboTimer = 0.f;
+		const bool isAttackState =
+			(m_state == State::Attack1 || m_state == State::Attack2 ||
+			 m_state == State::Attack3 || m_state == State::Attack4);
 
+		if (isAttackState)
+		{
+			if (m_queueNextAttack && m_comboStep < 4)
+				startAttack(m_comboStep + 1);
+			else
+			{
+				m_isAttacking = false;
+				m_queueNextAttack = false;
+				m_comboTimer = 0.f;
+
+				if (m_inputDir != 0)
+					setState(m_isRunning ? State::Run : State::Walk);
+				else
+					setState(State::Idle);
+			}
+
+			updateAnimation(0.f);
+			return;
+		}
+		else if (m_state == State::Hit)
+		{
 			if (m_inputDir != 0)
 				setState(m_isRunning ? State::Run : State::Walk);
 			else
 				setState(State::Idle);
-		}
 
-		updateAnimation(0.f);
-		return;
+			updateAnimation(0.f);
+			return;
+		}
+		else if (m_state == State::Death)
+		{
+			// stay on last death frame
+			m_currentFrame = totalFrames - 1;
+		}
 	}
 
 	const int leftOffset = m_currentFrame * m_frameSize.x;
