@@ -7,7 +7,11 @@ Game::Game() : m_window(sf::VideoMode({ 854, 480 }), "Learning SFML game dev")
 {
 	m_window.setFramerateLimit(120);
 
-	m_view.setSize({ static_cast<float>(m_baseResolution.x), static_cast<float>(m_baseResolution.y) });
+	const float cameraZoom = 0.75f; // 1.0 = current, 0.75 = zoom in, 0.5 = very zoomed in
+	m_view.setSize({
+		static_cast<float>(m_baseResolution.x) * cameraZoom,
+		static_cast<float>(m_baseResolution.y) * cameraZoom
+	});
 	m_view.setCenter({ static_cast<float>(m_baseResolution.x) * 0.5f, static_cast<float>(m_baseResolution.y) * 0.5f });
 	updateView(m_window.getSize());
 
@@ -211,41 +215,52 @@ void Game::drawUI()
 
 	const float barW = 140.f;
 	const float barH = 12.f;
+	const float margin = 12.f;
 
-	// Player HP bar (top-left)
+	const sf::Vector2u ws = m_window.getSize();
+	const sf::FloatRect vp = m_view.getViewport();
+
+	// Pixel rectangle of the active gameplay viewport (letterboxed area)
+	const float uiX = vp.position.x * static_cast<float>(ws.x);
+	const float uiY = vp.position.y * static_cast<float>(ws.y);
+	const float uiW = vp.size.x * static_cast<float>(ws.x);
+	const float uiH = vp.size.y * static_cast<float>(ws.y);
+
+	// Player HP bar (top-left inside gameplay viewport)
 	sf::RectangleShape playerBg({ barW, barH });
-	playerBg.setPosition({ 12.f, 12.f });
+	playerBg.setPosition({ uiX + margin, uiY + margin });
 	playerBg.setFillColor(sf::Color(40, 40, 40));
 	playerBg.setOutlineThickness(1.f);
- playerBg.setOutlineColor(sf::Color::White);
+	playerBg.setOutlineColor(sf::Color::White);
 
-	const float playerRatio = static_cast<float>(m_player.getHealth()) / static_cast<float>(m_player.getMaxHealth());
+	const float playerRatio = static_cast<float>(m_player.getHealth()) / static_cast<float>(std::max(1, m_player.getMaxHealth()));
 	sf::RectangleShape playerHp({ barW * std::clamp(playerRatio, 0.f, 1.f), barH });
-	playerHp.setPosition({ 12.f, 12.f });
+	playerHp.setPosition({ uiX + margin, uiY + margin });
 	playerHp.setFillColor(sf::Color(80, 220, 90));
 
 	m_window.draw(playerBg);
 	m_window.draw(playerHp);
 
-	// Enemy HP bar (top-right)
+	// Enemy HP bar (top-right inside gameplay viewport)
 	const int enemyHpValue = std::max(0, m_enemy.getHealth());
-	const int enemyMaxValue = std::max(1, m_enemy.getMaxHealth()); // avoid divide-by-zero
+	const int enemyMaxValue = std::max(1, m_enemy.getMaxHealth());
 	const float enemyRatio = static_cast<float>(enemyHpValue) / static_cast<float>(enemyMaxValue);
 
+	const float enemyBarX = uiX + uiW - barW - margin;
+	const float enemyBarY = uiY + margin;
+
 	sf::RectangleShape enemyBg({ barW, barH });
-	enemyBg.setPosition({ static_cast<float>(m_window.getSize().x) - barW - 12.f, 12.f });
-	enemyBg.setFillColor(sf::Color(25, 25, 25, 220)); // darker for visibility
+	enemyBg.setPosition({ enemyBarX, enemyBarY });
+	enemyBg.setFillColor(sf::Color(25, 25, 25, 220));
 	enemyBg.setOutlineThickness(2.f);
 	enemyBg.setOutlineColor(sf::Color::White);
 
 	float enemyFillW = barW * std::clamp(enemyRatio, 0.f, 1.f);
-
-	// Optional: keep at least tiny fill visible while alive
 	if (enemyHpValue > 0 && enemyFillW < 2.f)
 		enemyFillW = 2.f;
 
 	sf::RectangleShape enemyHp({ enemyFillW, barH });
-	enemyHp.setPosition({ static_cast<float>(m_window.getSize().x) - barW - 12.f, 12.f });
+	enemyHp.setPosition({ enemyBarX, enemyBarY });
 	enemyHp.setFillColor(sf::Color(220, 70, 70));
 
 	m_window.draw(enemyBg);

@@ -75,6 +75,6 @@ private:
 
     int m_currentFrame = 0;
     float m_animationTimer = 0.f;
-    float m_frameDuration = 0.15f;
+    float m_frameDuration = 0.3f;
     sf::Vector2i m_frameSize{ 90, 37 };
 };
