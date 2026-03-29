@@ -11,7 +11,7 @@ Game::Game() : m_window(sf::VideoMode({ 854, 480 }), "Learning SFML game dev")
 	m_view.setCenter({ static_cast<float>(m_baseResolution.x) * 0.5f, static_cast<float>(m_baseResolution.y) * 0.5f });
 	updateView(m_window.getSize());
 
-	if (!m_player.load("Assets/player.png", m_baseResolution))
+	if (!m_player.load("Assets/playerSheet.png", m_baseResolution))
 		std::cerr << "Failed to load player texture!  fix the clanker\n";
 
 	if (!m_backgroundTexture.loadFromFile("Assets/background.png"))
@@ -111,21 +111,33 @@ void Game::processEvents()
 void Game::update(float deltaTime) 
 {
 	const float move = m_player.getSpeed() * deltaTime;
+	bool isMoving = false; // Add a flag to track if we pressed a movement key
 
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A))
 	{
 		m_player.move(-move, 0.f);
 		m_player.setDirection(Player::Direction::Left);
+		isMoving = true;
 	}
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
 	{
 		m_player.move(move, 0.f);
 		m_player.setDirection(Player::Direction::Right);
+		isMoving = true;
+	}
+	if (isMoving)
+	{
+		m_player.setState(Player::State::Walk);
+	}
+	else {
+		m_player.setState(Player::State::Idle);
 	}
 
 	m_player.applyGravity(deltaTime);
-	m_player.update(m_baseResolution);
+	// Pass deltaTime as the first argument here!
+	m_player.update(deltaTime, m_baseResolution); 
 	m_player.resolveCollisions(m_platforms); //ground
+	
 }
 
 void Game::render()
@@ -137,6 +149,13 @@ void Game::render()
 	m_player.draw(m_window);
 	m_window.display();
 }
+
+
+
+
+
+
+
 
 
 
