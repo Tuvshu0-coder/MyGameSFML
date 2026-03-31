@@ -58,7 +58,8 @@ void Enemy::update(float deltaTime, sf::Vector2f playerCenter)
 		if (m_stunTimer < 0.f)
 			m_stunTimer = 0.f;
 
-		setState(State::Hit);
+		// Don't re-enter Hit here; let takeDamage()/stun() trigger it once.
+		// While stunned, just animate current state (Hit once, then Idle).
 		updateAnimation(deltaTime);
 		return;
 	}
@@ -198,10 +199,14 @@ void Enemy::takeDamage(int amount)
 	if (m_health <= 0)
 	{
 		setState(State::Death);
+		updateAnimation(0.f); // show first death frame immediately
 	}
 	else
 	{
+		// Lock enemy in hit reaction long enough to visibly play hit anim
+		m_stunTimer = std::max(m_stunTimer, m_defaultStunDuration);
 		setState(State::Hit);
+		updateAnimation(0.f); // show first hit frame immediately this frame
 	}
 }
 
