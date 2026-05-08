@@ -135,6 +135,8 @@ void Player::update(float deltaTime, sf::Vector2u windowSize)
 
 			if (m_velocityX > currentMaxSpeed) m_velocityX = currentMaxSpeed;
 			if (m_velocityX < -currentMaxSpeed) m_velocityX = -currentMaxSpeed;
+
+			setState(m_velocityY < 0.f ? State::JumpUp : State::Falling);
 		}
 	}
 	else
@@ -286,6 +288,18 @@ void Player::updateAnimation(float deltaTime)
 		activeRow = 4;
 		totalFrames = 8;
 		currentFrameDuration = 0.08f;
+	}
+	else if (m_state == State::JumpUp)
+	{
+		activeRow = 13;
+		totalFrames = 3;
+		currentFrameDuration = 0.09f;
+	}
+	else if (m_state == State::Falling)
+	{
+		activeRow = 15;
+		totalFrames = 3;
+		currentFrameDuration = 0.09f;
 	}
 	else if (m_state == State::Block)
 	{

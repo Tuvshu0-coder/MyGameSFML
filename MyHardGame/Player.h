@@ -6,7 +6,7 @@ class Player
 {
 public:
     enum class Direction { Left, Right };
-    enum class State { Idle, Walk, Run, Block, Attack1, Attack2, Attack3, Attack4, Hit, Death };
+    enum class State { Idle, Walk, Run, JumpUp, Falling, Block, Attack1, Attack2, Attack3, Attack4, Hit, Death };
 
     Player();
 
