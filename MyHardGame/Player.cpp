@@ -1,4 +1,5 @@
 #include "Player.h"
+#include <iostream>
 
 Player::Player() : m_sprite(m_texture) {} // wut
 
@@ -15,6 +16,16 @@ bool Player::load(const std::string& path, sf::Vector2u windowSize)
 	m_sprite.setOrigin({ 27.f, 33.f });
 
 	m_sprite.setPosition({ static_cast<float>(windowSize.x) * 0.5f, static_cast<float>(windowSize.y) * 0.5f });
+
+	if (m_swingBuffer.loadFromFile("Assets/music/swing.mp3"))
+	{
+		m_swingSound.emplace(m_swingBuffer);
+		m_swingSound->setVolume(70.f);
+	}
+	else
+	{
+		std::cerr << "Failed to load swing sound!\n";
+	}
 
 	// I will update this function later to handle my new sprite sheet logic
 	updateAnimation(0.0f);
@@ -76,6 +87,12 @@ void Player::attack()
 	{
 		const int nextCombo = (m_comboStep <= 0) ? 1 : (m_comboStep < 4 ? m_comboStep + 1 : 1);
 		startAttack(nextCombo);
+
+		if (m_swingSound)
+		{
+			m_swingSound->stop();
+			m_swingSound->play();
+		}
 	}
 	else if (m_comboStep < 4)
 	{

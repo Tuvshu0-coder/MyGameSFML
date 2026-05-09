@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
-Game::Game() : m_window(sf::VideoMode({ 854, 480 }), "Learning SFML game dev")
+Game::Game() : m_window(sf::VideoMode({ 854, 480 }), "Get your bugatti back!")
 {
 	m_window.setFramerateLimit(120);
 
@@ -17,6 +17,17 @@ Game::Game() : m_window(sf::VideoMode({ 854, 480 }), "Learning SFML game dev")
 
 	if (!m_uiFont.openFromFile("Assets/Fonts/PressStart2P-Regular.ttf"))
 		std::cerr << "Failed to load UI font!\n";
+
+	if (!m_backgroundMusic.openFromFile("Assets/music/bg.mp3"))
+		std::cerr << "Failed to load background music!\n";
+	else
+	{
+		m_backgroundMusic.setLooping(true);
+		m_backgroundMusic.play();
+	}
+
+	if (!m_endingMusic.openFromFile("Assets/music/ending_music.mp3"))
+		std::cerr << "Failed to load ending music!\n";
 
 	if (!m_backgroundTexture.loadFromFile("Assets/background.png"))
 		std::cerr << "Failed to load background texture!\n";
@@ -38,6 +49,14 @@ Game::Game() : m_window(sf::VideoMode({ 854, 480 }), "Learning SFML game dev")
 	{
 		m_swordsmanSprite.emplace(m_swordsmanTexture);
 		m_swordsmanSprite->setPosition({ 194.f, 237.f });
+	}
+
+	if (!m_bugattiTexture.loadFromFile("Assets/bugatti.png"))
+		std::cerr << "Failed to load bugatti texture!\n";
+	else
+	{
+		m_bugattiSprite.emplace(m_bugattiTexture);
+		m_bugattiSprite->setScale({ 0.5f, 0.5f });
 	}
 
 	m_levelPaths = {
@@ -297,7 +316,41 @@ void Game::update(float deltaTime)
 		return;
 	}
 
+	const float playerRight = playerBounds.position.x + playerBounds.size.x;
+	if (playerRight >= static_cast<float>(m_worldPixelSize.x) - 1.f)
+	{
+		if (m_currentLevelIndex < 2)
+		{
+			m_gameState = GameState::LevelComplete;
+			return;
+		}
+	}
+
 	m_enemy.update(deltaTime, m_player.getCenter());
+
+	if (m_currentLevelIndex == 2 && m_enemy.isDead() && !m_bugattiTriggered && !m_bugattiPending)
+	{
+		m_bugattiPending = true;
+		m_bugattiDelayTimer = 2.f;
+
+		if (!m_endingMusicPlayed && m_endingMusic.getStatus() != sf::SoundSource::Status::Playing)
+		{
+			m_endingMusic.play();
+			m_endingMusicPlayed = true;
+		}
+	}
+
+	if (m_bugattiPending)
+	{
+		m_bugattiDelayTimer -= deltaTime;
+		if (m_bugattiDelayTimer <= 0.f && m_bugattiSprite)
+		{
+			m_bugattiPending = false;
+			m_bugattiTriggered = true;
+			m_bugattiFalling = true;
+			m_bugattiSprite->setPosition({ m_player.getCenter().x - 59.f, playerBounds.position.y - 80.f });
+		}
+	}
 
 	// Player -> Enemy hit
 	if (!m_enemy.isDead() && m_player.consumeAttackHit())
@@ -324,18 +377,37 @@ void Game::update(float deltaTime)
 		}
 	}
 
+	if (m_bugattiFalling && m_bugattiSprite)
+	{
+		sf::FloatRect bounds = m_bugattiSprite->getGlobalBounds();
+		const float nextY = bounds.position.y + (m_bugattiFallSpeed * deltaTime);
+
+		float groundY = static_cast<float>(m_worldPixelSize.y);
+		for (const auto& platform : m_platforms)
+		{
+			const float right = bounds.position.x + bounds.size.x;
+			const float platformRight = platform.position.x + platform.size.x;
+
+			if (right > platform.position.x && bounds.position.x < platformRight)
+				groundY = std::min(groundY, platform.position.y);
+		}
+
+		if (nextY + bounds.size.y >= groundY)
+		{
+			m_bugattiSprite->setPosition({ bounds.position.x, groundY - bounds.size.y });
+			m_bugattiFalling = false;
+		}
+		else
+		{
+			m_bugattiSprite->setPosition({ bounds.position.x, nextY });
+		}
+	}
+
 	m_player.setBlocking(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::K));
 
 	if (m_player.isDead())
 	{
 		m_gameState = GameState::DeathMenu;
-		return;
-	}
-
-	const float playerRight = playerBounds.position.x + playerBounds.size.x;
-	if (playerRight >= static_cast<float>(m_worldPixelSize.x) - 1.f)
-	{
-		m_gameState = GameState::LevelComplete;
 		return;
 	}
 
@@ -442,7 +514,7 @@ void Game::drawMainMenu()
 	const float baseY = static_cast<float>(ws.y) * 0.55f;
 
 	sf::Text titleText(m_uiFont);
-	titleText.setString("MyHardGame");
+	titleText.setString("Get your Bugatti back!");
 	titleText.setCharacterSize(32);
 	titleText.setFillColor(sf::Color::White);
 	const sf::FloatRect titleBounds = titleText.getLocalBounds();
@@ -548,6 +620,12 @@ bool Game::loadLevel(int levelIndex, bool reloadPlayer)
 	m_worldPixelSize = m_world.getPixelSize();
 	m_platforms = m_world.getColliders();
 
+	m_bugattiTriggered = false;
+	m_bugattiFalling = false;
+	m_bugattiPending = false;
+	m_bugattiDelayTimer = 0.f;
+	m_endingMusicPlayed = false;
+
 	if (reloadPlayer)
 	{
 		m_player = Player();
@@ -559,7 +637,12 @@ bool Game::loadLevel(int levelIndex, bool reloadPlayer)
 	m_player.resetForLevel(playerSpawn);
 
 	const float worldWidth = static_cast<float>(m_worldPixelSize.x);
-	const sf::Vector2f enemySpawn{ worldWidth - 40.f, 256.f };
+	sf::Vector2f enemySpawn{ worldWidth - 40.f, 256.f };
+
+	if (levelIndex == 0)
+		enemySpawn = { 1076.f, 256.f };
+	else if (levelIndex == 1)
+		enemySpawn = { 1203.f, 256.f };
 
 	m_enemy = Enemy();
 	if (!m_enemy.load("Assets/enemySheet.png", enemySpawn))
@@ -605,6 +688,9 @@ void Game::render()
 	if (m_currentLevelIndex == 0 && m_swordsmanSprite)
 		m_window.draw(*m_swordsmanSprite);
 
+	if (m_currentLevelIndex == 2 && m_bugattiSprite && m_bugattiTriggered)
+		m_window.draw(*m_bugattiSprite);
+
 	m_enemy.draw(m_window);
 	m_player.draw(m_window);
 	m_world.drawFront(m_window);
@@ -617,6 +703,8 @@ void Game::render()
 		drawOverlay("You Died", "R or Enter - Retry\nQ or Esc - Quit");
 	else if (m_gameState == GameState::LevelComplete)
 		drawLevelComplete();
+	else if (m_gameState == GameState::Playing && m_currentLevelIndex == 2 && m_bugattiTriggered && !m_bugattiFalling)
+		drawOverlay("You've won BUGATTI!", "");
 
 	m_window.display();
 }

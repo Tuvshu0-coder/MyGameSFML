@@ -89,4 +89,8 @@ private:
 
 	float m_stunTimer = 0.f;
 	float m_defaultStunDuration = 0.6f;
+
+	sf::Vector2f m_spawnPosition{ 0.f, 0.f };
+	float m_patrolRange = 69.f;
+	int m_patrolDirection = 1;
 };

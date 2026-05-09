@@ -16,6 +16,9 @@ bool Enemy::load(const std::string& texturePath, sf::Vector2f spawnFeetPosition)
 	m_sprite.setOrigin({ static_cast<float>(m_originX), static_cast<float>(m_originY) });
 	m_sprite.setPosition(spawnFeetPosition);
 
+	m_spawnPosition = spawnFeetPosition;
+	m_patrolDirection = 1;
+
 	setState(State::Idle);
 	updateAnimation(0.f);
 	return true;
@@ -58,8 +61,6 @@ void Enemy::update(float deltaTime, sf::Vector2f playerCenter)
 		if (m_stunTimer < 0.f)
 			m_stunTimer = 0.f;
 
-		// Don't re-enter Hit here; let takeDamage()/stun() trigger it once.
-		// While stunned, just animate current state (Hit once, then Idle).
 		updateAnimation(deltaTime);
 		return;
 	}
@@ -67,9 +68,7 @@ void Enemy::update(float deltaTime, sf::Vector2f playerCenter)
 	const sf::Vector2f center = getCenter();
 	const float dx = playerCenter.x - center.x;
 	const float distance = std::abs(dx);
-
-	if (dx < 0.f) m_direction = Direction::Left;
-	if (dx > 0.f) m_direction = Direction::Right;
+	const float chaseDistance = 70.f;
 
 	if (!m_isAttacking)
 	{
@@ -77,11 +76,35 @@ void Enemy::update(float deltaTime, sf::Vector2f playerCenter)
 		{
 			setState(State::Attack);
 		}
-		else
+		else if (distance < chaseDistance)
 		{
 			setState(State::Run);
 			const float dir = (dx < 0.f) ? -1.f : 1.f;
+			m_direction = (dx < 0.f) ? Direction::Left : Direction::Right;
 			m_sprite.move({ dir * m_moveSpeed * deltaTime, 0.f });
+		}
+		else
+		{
+			setState(State::Run);
+
+			const float patrolLeft = m_spawnPosition.x - m_patrolRange;
+			const float patrolRight = m_spawnPosition.x + m_patrolRange;
+			sf::Vector2f pos = m_sprite.getPosition();
+			pos.x += static_cast<float>(m_patrolDirection) * m_moveSpeed * deltaTime;
+
+			if (pos.x <= patrolLeft)
+			{
+				pos.x = patrolLeft;
+				m_patrolDirection = 1;
+			}
+			else if (pos.x >= patrolRight)
+			{
+				pos.x = patrolRight;
+				m_patrolDirection = -1;
+			}
+
+			m_direction = (m_patrolDirection < 0) ? Direction::Left : Direction::Right;
+			m_sprite.setPosition(pos);
 		}
 	}
 
@@ -203,7 +226,6 @@ void Enemy::takeDamage(int amount)
 	}
 	else
 	{
-		// Lock enemy in hit reaction long enough to visibly play hit anim
 		m_stunTimer = std::max(m_stunTimer, m_defaultStunDuration);
 		setState(State::Hit);
 		updateAnimation(0.f); // show first hit frame immediately this frame

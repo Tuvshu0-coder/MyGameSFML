@@ -1,5 +1,6 @@
 #pragma once
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <vector>
 #include <optional>
 #include <string>
@@ -61,6 +62,18 @@ private:
 
 	sf::Texture m_swordsmanTexture;
 	std::optional<sf::Sprite> m_swordsmanSprite;
+
+	sf::Texture m_bugattiTexture;
+	std::optional<sf::Sprite> m_bugattiSprite;
+	bool m_bugattiTriggered = false;
+	bool m_bugattiFalling = false;
+	float m_bugattiFallSpeed = 520.f;
+
+	sf::Music m_backgroundMusic;
+	sf::Music m_endingMusic;
+	bool m_endingMusicPlayed = false;
+	bool m_bugattiPending = false;
+	float m_bugattiDelayTimer = 0.f;
 
 private:
 	void updateBackgroundLayout(sf::Vector2u windowSize);

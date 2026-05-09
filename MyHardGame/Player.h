@@ -1,6 +1,8 @@
 #pragma once
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <vector>
+#include <optional>
 
 class Player
 {
@@ -44,6 +46,9 @@ private:
 
     sf::Texture m_texture;
     sf::Sprite m_sprite;
+
+    sf::SoundBuffer m_swingBuffer;
+    std::optional<sf::Sound> m_swingSound;
 
     float m_velocityX = 0.f;
     float m_velocityY = 0.f;
