@@ -18,19 +18,6 @@ Game::Game() : m_window(sf::VideoMode({ 854, 480 }), "Learning SFML game dev")
 	if (!m_uiFont.openFromFile("Assets/Fonts/PressStart2P-Regular.ttf"))
 		std::cerr << "Failed to load UI font!\n";
 
-	if (!m_player.load("Assets/playerSheet.png", m_baseResolution))
-		std::cerr << "Failed to load player texture! fix the clanker\n";
-
-	if (!m_world.loadFromTmx("Assets/Maps/map1.tmx"))
-	{
-		std::cerr << "Failed to load TMX map: Assets/Maps/level01.tmx\n";
-	}
-	else
-	{
-		m_worldPixelSize = m_world.getPixelSize();
-		m_platforms = m_world.getColliders();
-	}
-
 	if (!m_backgroundTexture.loadFromFile("Assets/background.png"))
 		std::cerr << "Failed to load background texture!\n";
 
@@ -45,10 +32,21 @@ Game::Game() : m_window(sf::VideoMode({ 854, 480 }), "Learning SFML game dev")
 		updateMainMenuLayout(m_window.getSize());
 	}
 
-	// Enemy spawn near right side, on ground top line (adjust if needed)
-	const sf::Vector2f enemySpawn{ static_cast<float>(m_worldPixelSize.x) - 40.f, 256.f };
-	if (!m_enemy.load("Assets/enemySheet.png", enemySpawn))
-		std::cerr << "Failed to load enemy sheet!\n";
+	if (!m_swordsmanTexture.loadFromFile("Assets/swordsman.png"))
+		std::cerr << "Failed to load swordsman texture!\n";
+	else
+	{
+		m_swordsmanSprite.emplace(m_swordsmanTexture);
+		m_swordsmanSprite->setPosition({ 194.f, 237.f });
+	}
+
+	m_levelPaths = {
+		"Assets/Maps/map1.tmx",
+		"Assets/Maps/map2.tmx",
+		"Assets/Maps/map3.tmx"
+	};
+
+	loadLevel(0, true);
 }
 
 void Game::updateView(sf::Vector2u windowSize)
@@ -241,6 +239,33 @@ void Game::processEvents()
 				}
 			}
 		}
+
+		if (const auto* mousePressed = event->getIf<sf::Event::MouseButtonPressed>())
+		{
+			if (mousePressed->button == sf::Mouse::Button::Left && m_gameState == GameState::LevelComplete)
+			{
+				const sf::Vector2f mousePos{
+					static_cast<float>(mousePressed->position.x),
+					static_cast<float>(mousePressed->position.y)
+				};
+
+				if (m_levelCompleteButtonBounds.contains(mousePos))
+				{
+					const int nextLevel = m_currentLevelIndex + 1;
+					if (nextLevel < static_cast<int>(m_levelPaths.size()))
+					{
+						m_currentLevelIndex = nextLevel;
+						loadLevel(m_currentLevelIndex, false);
+						m_gameState = GameState::Playing;
+					}
+					else
+					{
+						m_gameState = GameState::MainMenu;
+						m_mainMenuSelection = MainMenuOption::Start;
+					}
+				}
+			}
+		}
 	}
 
 	if (m_gameState == GameState::Playing && sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space))
@@ -262,6 +287,15 @@ void Game::update(float deltaTime)
 	m_player.applyGravity(deltaTime);
 	m_player.update(deltaTime, m_worldPixelSize);
 	m_player.resolveCollisions(m_platforms);
+
+	const sf::FloatRect playerBounds = m_player.getGlobalBounds();
+	const float voidY = static_cast<float>(m_worldPixelSize.y) + 60.f;
+	if (playerBounds.position.y > voidY)
+	{
+		m_player.takeDamage(m_player.getMaxHealth());
+		m_gameState = GameState::DeathMenu;
+		return;
+	}
 
 	m_enemy.update(deltaTime, m_player.getCenter());
 
@@ -293,7 +327,17 @@ void Game::update(float deltaTime)
 	m_player.setBlocking(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::K));
 
 	if (m_player.isDead())
+	{
 		m_gameState = GameState::DeathMenu;
+		return;
+	}
+
+	const float playerRight = playerBounds.position.x + playerBounds.size.x;
+	if (playerRight >= static_cast<float>(m_worldPixelSize.x) - 1.f)
+	{
+		m_gameState = GameState::LevelComplete;
+		return;
+	}
 
 	updateCamera(deltaTime);
 }
@@ -437,21 +481,101 @@ void Game::drawMainMenu()
 	m_window.setView(m_view);
 }
 
-void Game::resetGame()
+void Game::drawLevelComplete()
 {
-	m_player = Player();
-	if (!m_player.load("Assets/playerSheet.png", m_baseResolution))
-		std::cerr << "Failed to reload player texture!\n";
+	m_window.setView(m_window.getDefaultView());
+
+	const sf::Vector2u ws = m_window.getSize();
+	sf::RectangleShape dim({ static_cast<float>(ws.x), static_cast<float>(ws.y) });
+	dim.setFillColor(sf::Color(0, 0, 0, 170));
+	m_window.draw(dim);
+
+	const int levelNumber = m_currentLevelIndex + 1;
+	const std::string title = "You've completed level " + std::to_string(levelNumber) + "!";
+	const std::string buttonLabel =
+		(levelNumber < static_cast<int>(m_levelPaths.size())) ? "Proceed to next level" : "Back to main menu";
+
+	sf::Text titleText(m_uiFont);
+	titleText.setString(title);
+	titleText.setCharacterSize(22);
+	titleText.setFillColor(sf::Color::White);
+	const sf::FloatRect titleBounds = titleText.getLocalBounds();
+	titleText.setOrigin({ titleBounds.position.x + titleBounds.size.x * 0.5f, titleBounds.position.y + titleBounds.size.y * 0.5f });
+	titleText.setPosition({ static_cast<float>(ws.x) * 0.5f, static_cast<float>(ws.y) * 0.4f });
+	m_window.draw(titleText);
+
+	const float buttonW = 280.f;
+	const float buttonH = 42.f;
+	const float centerX = static_cast<float>(ws.x) * 0.5f;
+	const float centerY = static_cast<float>(ws.y) * 0.58f;
+
+	sf::RectangleShape button({ buttonW, buttonH });
+	button.setOrigin({ buttonW * 0.5f, buttonH * 0.5f });
+	button.setPosition({ centerX, centerY });
+	button.setFillColor(sf::Color(30, 120, 60, 220));
+	button.setOutlineThickness(2.f);
+	button.setOutlineColor(sf::Color::White);
+	m_window.draw(button);
+
+	sf::Text buttonText(m_uiFont);
+	buttonText.setString(buttonLabel);
+	buttonText.setCharacterSize(16);
+	buttonText.setFillColor(sf::Color::White);
+	const sf::FloatRect buttonTextBounds = buttonText.getLocalBounds();
+	buttonText.setOrigin({ buttonTextBounds.position.x + buttonTextBounds.size.x * 0.5f, buttonTextBounds.position.y + buttonTextBounds.size.y * 0.5f });
+	buttonText.setPosition({ centerX, centerY });
+	m_window.draw(buttonText);
+
+	m_levelCompleteButtonBounds = sf::FloatRect(
+		{ centerX - buttonW * 0.5f, centerY - buttonH * 0.5f },
+		{ buttonW, buttonH }
+	);
+
+	m_window.setView(m_view);
+}
+
+bool Game::loadLevel(int levelIndex, bool reloadPlayer)
+{
+	if (levelIndex < 0 || levelIndex >= static_cast<int>(m_levelPaths.size()))
+		return false;
+
+	if (!m_world.loadFromTmx(m_levelPaths[levelIndex]))
+	{
+		std::cerr << "Failed to load TMX map: " << m_levelPaths[levelIndex] << "\n";
+		return false;
+	}
+
+	m_worldPixelSize = m_world.getPixelSize();
+	m_platforms = m_world.getColliders();
+
+	if (reloadPlayer)
+	{
+		m_player = Player();
+		if (!m_player.load("Assets/playerSheet.png", m_baseResolution))
+			std::cerr << "Failed to load player texture! fix the clanker\n";
+	}
+
+	const sf::Vector2f playerSpawn{ 20.f, 256.f };
+	m_player.resetForLevel(playerSpawn);
 
 	const float worldWidth = static_cast<float>(m_worldPixelSize.x);
 	const sf::Vector2f enemySpawn{ worldWidth - 40.f, 256.f };
 
 	m_enemy = Enemy();
 	if (!m_enemy.load("Assets/enemySheet.png", enemySpawn))
-		std::cerr << "Failed to reload enemy sheet!\n";
+		std::cerr << "Failed to load enemy sheet!\n";
 
 	m_view.setCenter({ static_cast<float>(m_baseResolution.x) * 0.5f, static_cast<float>(m_baseResolution.y) * 0.5f });
 	updateCamera(0.f);
+
+	return true;
+}
+
+void Game::resetGame()
+{
+	m_currentLevelIndex = 0;
+	loadLevel(m_currentLevelIndex, true);
+	m_gameState = GameState::Playing;
 }
 
 void Game::render()
@@ -477,6 +601,10 @@ void Game::render()
 
 	m_window.setView(m_view);
 	m_world.drawBack(m_window);
+
+	if (m_currentLevelIndex == 0 && m_swordsmanSprite)
+		m_window.draw(*m_swordsmanSprite);
+
 	m_enemy.draw(m_window);
 	m_player.draw(m_window);
 	m_world.drawFront(m_window);
@@ -487,6 +615,8 @@ void Game::render()
 		drawOverlay("Paused", "P or Esc - Resume\nQ - Quit");
 	else if (m_gameState == GameState::DeathMenu)
 		drawOverlay("You Died", "R or Enter - Retry\nQ or Esc - Quit");
+	else if (m_gameState == GameState::LevelComplete)
+		drawLevelComplete();
 
 	m_window.display();
 }

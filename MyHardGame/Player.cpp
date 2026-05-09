@@ -26,6 +26,24 @@ void Player::move(float dx, float dy)
 	m_sprite.move({ dx, dy });
 }
 
+void Player::resetForLevel(sf::Vector2f position)
+{
+	m_sprite.setPosition(position);
+	m_velocityX = 0.f;
+	m_velocityY = 0.f;
+	m_inputDir = 0;
+	m_isRunning = false;
+	m_isGrounded = false;
+	m_isBlocking = false;
+	m_isAttacking = false;
+	m_queueNextAttack = false;
+	m_attackHitConsumed = false;
+	m_comboStep = 0;
+	m_comboTimer = 0.f;
+	setDirection(Direction::Right);
+	setState(State::Idle);
+}
+
 float Player::getScaleFactor() const
 {
 	return m_scale / m_referenceScale;
@@ -149,14 +167,6 @@ void Player::update(float deltaTime, sf::Vector2u windowSize)
 
 	sf::Vector2f pos = m_sprite.getPosition();
 	float winWidth = static_cast<float>(windowSize.x);
-	float winHeight = static_cast<float>(windowSize.y);
-
-	if (pos.y > winHeight)
-	{
-		pos.y = winHeight;
-		m_velocityY = 0.f;
-		m_isGrounded = true;
-	}
 
 	const float bodyHalfWidth = 5.f * m_scale;
 	if (pos.x - bodyHalfWidth < 0.f)
@@ -172,7 +182,6 @@ void Player::update(float deltaTime, sf::Vector2u windowSize)
 
 	m_sprite.setPosition(pos);
 	updateAnimation(deltaTime);
-
 }
 
 void Player::setDirection(Direction dir)
@@ -511,5 +520,6 @@ bool Player::isBlocking() const
 {
 	return m_isBlocking && !isDead() && m_state != State::Hit;
 }
+
 
 

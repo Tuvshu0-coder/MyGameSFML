@@ -13,6 +13,7 @@ public:
     bool load(const std::string& path, sf::Vector2u windowSize);
 
     void move(float dx, float dy);
+    void resetForLevel(sf::Vector2f position);
 
     void jump();
     void attack();

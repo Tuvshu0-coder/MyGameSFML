@@ -14,7 +14,7 @@ public:
 	void run(); //main loop
 
 private:
-	enum class GameState { MainMenu, Playing, Paused, DeathMenu };
+	enum class GameState { MainMenu, Playing, Paused, DeathMenu, LevelComplete };
 	enum class MainMenuOption { Start, Quit };
 
 	void processEvents();
@@ -25,7 +25,9 @@ private:
 	void drawUI();
 	void drawOverlay(const std::string& title, const std::string& body);
 	void drawMainMenu();
+	void drawLevelComplete();
 	void resetGame();
+	bool loadLevel(int levelIndex, bool reloadPlayer);
 
 private:
 	const sf::Vector2u m_baseResolution{ 426, 240 };
@@ -52,6 +54,13 @@ private:
 	sf::Font m_uiFont;
 	GameState m_gameState = GameState::MainMenu;
 	MainMenuOption m_mainMenuSelection = MainMenuOption::Start;
+
+	std::vector<std::string> m_levelPaths;
+	int m_currentLevelIndex = 0;
+	sf::FloatRect m_levelCompleteButtonBounds{ { 0.f, 0.f }, { 0.f, 0.f } };
+
+	sf::Texture m_swordsmanTexture;
+	std::optional<sf::Sprite> m_swordsmanSprite;
 
 private:
 	void updateBackgroundLayout(sf::Vector2u windowSize);
