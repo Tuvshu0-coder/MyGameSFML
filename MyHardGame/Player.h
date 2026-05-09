@@ -61,14 +61,14 @@ private:
     int m_health = 350;
     int m_maxHealth = 350;
 
-    float m_scale = 1.f;
+    float m_scale = 1.5f;
     float m_referenceScale = 2.f;
 
     float m_walkSpeed = 100.f;
     float m_runSpeed = 200.f;
     float m_airAcceleration = 600.f;
     float m_gravity = 800.f;
-    float m_jumpStrength = -300.f;
+    float m_jumpStrength = -350.f;
 
     Direction m_direction = Direction::Right;
     State m_state = State::Idle;

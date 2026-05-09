@@ -164,9 +164,9 @@ void Enemy::updateAnimation(float deltaTime)
 	m_sprite.setTextureRect(sf::IntRect({ left, top }, { m_frameSize.x, m_frameSize.y }));
 
 	if (m_direction == Direction::Left)
-		m_sprite.setScale({ -1.f, 1.f });
+		m_sprite.setScale({ -1.5f, 1.5f });
 	else
-		m_sprite.setScale({ 1.f, 1.f });
+		m_sprite.setScale({ 1.5f, 1.5f });
 }
 
 bool Enemy::consumeAttackHit()

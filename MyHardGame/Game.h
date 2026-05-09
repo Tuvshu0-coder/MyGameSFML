@@ -2,6 +2,7 @@
 #include <SFML/Graphics.hpp>
 #include <vector>
 #include <optional>
+#include <string>
 #include "Player.h"
 #include "World.h"
 #include "Enemy.h"
@@ -13,12 +14,16 @@ public:
 	void run(); //main loop
 
 private:
+	enum class GameState { MainMenu, Playing, Paused, DeathMenu };
+
 	void processEvents();
 	void update(float deltaTime);
 	void render();
 	void updateView(sf::Vector2u windowSize);
 	void updateCamera(float deltaTime);
 	void drawUI();
+	void drawOverlay(const std::string& title, const std::string& body);
+	void resetGame();
 
 private:
 	const sf::Vector2u m_baseResolution{ 426, 240 };
@@ -38,4 +43,10 @@ private:
 	std::optional<sf::Sprite> m_background;
 
 	std::vector<sf::FloatRect> m_platforms;
+
+	sf::Font m_uiFont;
+	GameState m_gameState = GameState::MainMenu;
+
+private:
+	void updateBackgroundLayout(sf::Vector2u windowSize);
 };
