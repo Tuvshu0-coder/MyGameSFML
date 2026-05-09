@@ -424,6 +424,11 @@ void Game::update(float deltaTime)
 {
 	if (m_gameState != GameState::Playing)
 		return;
+	if (m_hitStopTimer > 0.f)
+	{
+		m_hitStopTimer = std::max(0.f, m_hitStopTimer - deltaTime);
+		return;
+	}
 
 	int inputDir = 0;
 	const bool isRunning = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LShift);
@@ -493,7 +498,10 @@ void Game::update(float deltaTime)
 	{
 		const float dist = std::abs(m_player.getCenter().x - m_enemy.getCenter().x);
 		if (dist <= 50.f)
+		{
 			m_enemy.takeDamage(15);
+			m_hitStopTimer = m_hitStopDuration;
+		}
 	}
 
 	// Enemy -> Player hit
@@ -502,6 +510,8 @@ void Game::update(float deltaTime)
 		const float dist = std::abs(m_player.getCenter().x - m_enemy.getCenter().x);
 		if (dist <= 35.f)
 		{
+			m_hitStopTimer = m_hitStopDuration;
+
 			if (m_player.isBlocking())
 			{
 				m_enemy.stun(0.7f);
@@ -845,6 +855,7 @@ bool Game::loadLevel(int levelIndex, bool reloadPlayer)
 	m_dialogLineIndex = 0;
 	m_dialogVisibleChars = 0;
 	m_dialogCharTimer = 0.f;
+	m_hitStopTimer = 0.f;
 
 	if (reloadPlayer)
 	{
@@ -1015,4 +1026,7 @@ void Game::drawEndingCredits()
 
 	m_window.setView(m_view);
 }
+
+float m_hitStopTimer = 0.f;
+float m_hitStopDuration = 0.12f;
 

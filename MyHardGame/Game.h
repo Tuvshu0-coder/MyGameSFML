@@ -46,6 +46,9 @@ private:
 	float m_cameraFollowSpeed = 12.f;
 	float m_cameraDeadZone = 2.f;
 
+	float m_hitStopTimer = 0.f;
+	float m_hitStopDuration = 0.12f;
+
 	sf::RenderWindow m_window;
 	Player m_player;
 	Enemy m_enemy;
