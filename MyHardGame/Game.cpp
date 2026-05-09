@@ -37,6 +37,14 @@ Game::Game() : m_window(sf::VideoMode({ 854, 480 }), "Learning SFML game dev")
 	m_background.emplace(m_backgroundTexture);
 	updateBackgroundLayout(m_window.getSize());
 
+	if (!m_mainMenuTexture.loadFromFile("Assets/main_menu.png"))
+		std::cerr << "Failed to load main menu texture!\n";
+	else
+	{
+		m_mainMenuBackground.emplace(m_mainMenuTexture);
+		updateMainMenuLayout(m_window.getSize());
+	}
+
 	// Enemy spawn near right side, on ground top line (adjust if needed)
 	const sf::Vector2f enemySpawn{ static_cast<float>(m_worldPixelSize.x) - 40.f, 256.f };
 	if (!m_enemy.load("Assets/enemySheet.png", enemySpawn))
@@ -64,6 +72,7 @@ void Game::updateView(sf::Vector2u windowSize)
 	m_window.setView(m_view);
 
 	updateBackgroundLayout(windowSize);
+	updateMainMenuLayout(windowSize);
 }
 
 void Game::updateBackgroundLayout(sf::Vector2u windowSize)
@@ -80,6 +89,22 @@ void Game::updateBackgroundLayout(sf::Vector2u windowSize)
 
 	m_background->setScale({ scaleX, scaleY });
 	m_background->setPosition({ 0.f, 0.f });
+}
+
+void Game::updateMainMenuLayout(sf::Vector2u windowSize)
+{
+	if (!m_mainMenuBackground)
+		return;
+
+	const auto bgSize = m_mainMenuTexture.getSize();
+	if (bgSize.x == 0 || bgSize.y == 0)
+		return;
+
+	const float scaleX = static_cast<float>(windowSize.x) / static_cast<float>(bgSize.x);
+	const float scaleY = static_cast<float>(windowSize.y) / static_cast<float>(bgSize.y);
+
+	m_mainMenuBackground->setScale({ scaleX, scaleY });
+	m_mainMenuBackground->setPosition({ 0.f, 0.f });
 }
 
 void Game::updateCamera(float deltaTime)
@@ -168,10 +193,21 @@ void Game::processEvents()
 
 			if (m_gameState == GameState::MainMenu)
 			{
-				if (key == sf::Keyboard::Key::Enter)
+				if (key == sf::Keyboard::Key::Up || key == sf::Keyboard::Key::W)
+					m_mainMenuSelection = MainMenuOption::Start;
+				else if (key == sf::Keyboard::Key::Down || key == sf::Keyboard::Key::S)
+					m_mainMenuSelection = MainMenuOption::Quit;
+				else if (key == sf::Keyboard::Key::Enter)
 				{
-					resetGame();
-					m_gameState = GameState::Playing;
+					if (m_mainMenuSelection == MainMenuOption::Start)
+					{
+						resetGame();
+						m_gameState = GameState::Playing;
+					}
+					else
+					{
+						m_window.close();
+					}
 				}
 				else if (key == sf::Keyboard::Key::Escape || key == sf::Keyboard::Key::Q)
 				{
@@ -333,7 +369,7 @@ void Game::drawOverlay(const std::string& title, const std::string& body)
 
 	sf::Text titleText(m_uiFont);
 	titleText.setString(title);
-	 titleText.setCharacterSize(28);
+	titleText.setCharacterSize(28);
 	titleText.setFillColor(sf::Color::White);
 	const sf::FloatRect titleBounds = titleText.getLocalBounds();
 	titleText.setOrigin({ titleBounds.position.x + titleBounds.size.x * 0.5f, titleBounds.position.y + titleBounds.size.y * 0.5f });
@@ -349,6 +385,54 @@ void Game::drawOverlay(const std::string& title, const std::string& body)
 
 	m_window.draw(titleText);
 	m_window.draw(bodyText);
+
+	m_window.setView(m_view);
+}
+
+void Game::drawMainMenu()
+{
+	m_window.setView(m_window.getDefaultView());
+
+	const sf::Vector2u ws = m_window.getSize();
+	const float centerX = static_cast<float>(ws.x) * 0.5f;
+	const float baseY = static_cast<float>(ws.y) * 0.55f;
+
+	sf::Text titleText(m_uiFont);
+	titleText.setString("MyHardGame");
+	titleText.setCharacterSize(32);
+	titleText.setFillColor(sf::Color::White);
+	const sf::FloatRect titleBounds = titleText.getLocalBounds();
+	titleText.setOrigin({ titleBounds.position.x + titleBounds.size.x * 0.5f, titleBounds.position.y + titleBounds.size.y * 0.5f });
+	titleText.setPosition({ centerX, static_cast<float>(ws.y) * 0.28f });
+	m_window.draw(titleText);
+
+	const float buttonW = 200.f;
+	const float buttonH = 40.f;
+	const float buttonSpacing = 14.f;
+
+	const auto drawButton = [&](const std::string& label, float centerY, bool selected)
+	{
+		sf::RectangleShape button({ buttonW, buttonH });
+		button.setOrigin({ buttonW * 0.5f, buttonH * 0.5f });
+		button.setPosition({ centerX, centerY });
+		button.setFillColor(selected ? sf::Color(60, 120, 240, 220) : sf::Color(20, 20, 20, 180));
+		button.setOutlineThickness(2.f);
+		button.setOutlineColor(selected ? sf::Color::White : sf::Color(120, 120, 120));
+
+		sf::Text text(m_uiFont);
+		text.setString(label);
+		text.setCharacterSize(18);
+		text.setFillColor(sf::Color::White);
+		const sf::FloatRect textBounds = text.getLocalBounds();
+		text.setOrigin({ textBounds.position.x + textBounds.size.x * 0.5f, textBounds.position.y + textBounds.size.y * 0.5f });
+		text.setPosition({ centerX, centerY });
+
+		m_window.draw(button);
+		m_window.draw(text);
+	};
+
+	drawButton("Start", baseY, m_mainMenuSelection == MainMenuOption::Start);
+	drawButton("Quit", baseY + buttonH + buttonSpacing, m_mainMenuSelection == MainMenuOption::Quit);
 
 	m_window.setView(m_view);
 }
@@ -374,6 +458,19 @@ void Game::render()
 {
 	m_window.clear();
 
+	if (m_gameState == GameState::MainMenu)
+	{
+		m_window.setView(m_window.getDefaultView());
+		if (m_mainMenuBackground)
+			m_window.draw(*m_mainMenuBackground);
+		else if (m_background)
+			m_window.draw(*m_background);
+
+		drawMainMenu();
+		m_window.display();
+		return;
+	}
+
 	m_window.setView(m_window.getDefaultView());
 	if (m_background)
 		m_window.draw(*m_background);
@@ -384,17 +481,12 @@ void Game::render()
 	m_player.draw(m_window);
 	m_world.drawFront(m_window);
 
-	if (m_gameState != GameState::MainMenu)
-		drawUI();
+	drawUI();
 
-	if (m_gameState == GameState::MainMenu)
-		drawOverlay("MyHardGame", "Enter - Start\nEsc - Quit");
-	else if (m_gameState == GameState::Paused)
+	if (m_gameState == GameState::Paused)
 		drawOverlay("Paused", "P or Esc - Resume\nQ - Quit");
 	else if (m_gameState == GameState::DeathMenu)
 		drawOverlay("You Died", "R or Enter - Retry\nQ or Esc - Quit");
 
 	m_window.display();
 }
-
-

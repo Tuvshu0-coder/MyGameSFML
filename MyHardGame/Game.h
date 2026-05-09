@@ -15,6 +15,7 @@ public:
 
 private:
 	enum class GameState { MainMenu, Playing, Paused, DeathMenu };
+	enum class MainMenuOption { Start, Quit };
 
 	void processEvents();
 	void update(float deltaTime);
@@ -23,6 +24,7 @@ private:
 	void updateCamera(float deltaTime);
 	void drawUI();
 	void drawOverlay(const std::string& title, const std::string& body);
+	void drawMainMenu();
 	void resetGame();
 
 private:
@@ -42,11 +44,16 @@ private:
 	sf::Texture m_backgroundTexture;
 	std::optional<sf::Sprite> m_background;
 
+	sf::Texture m_mainMenuTexture;
+	std::optional<sf::Sprite> m_mainMenuBackground;
+
 	std::vector<sf::FloatRect> m_platforms;
 
 	sf::Font m_uiFont;
 	GameState m_gameState = GameState::MainMenu;
+	MainMenuOption m_mainMenuSelection = MainMenuOption::Start;
 
 private:
 	void updateBackgroundLayout(sf::Vector2u windowSize);
+	void updateMainMenuLayout(sf::Vector2u windowSize);
 };
