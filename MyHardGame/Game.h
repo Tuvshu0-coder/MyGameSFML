@@ -97,6 +97,14 @@ private:
 	bool m_showTutorialPrompt = false;
 	std::string m_tutorialText;
 
+	void updateEndingCredits(float deltaTime);
+	void drawEndingCredits();
+
+	bool m_showEndingCredits = false;
+	float m_endingCreditsOffset = 0.f;
+	float m_endingCreditsSpeed = 28.f;
+	std::string m_endingCreditsText;
+
 private:
 	void updateBackgroundLayout(sf::Vector2u windowSize);
 	void updateMainMenuLayout(sf::Vector2u windowSize);

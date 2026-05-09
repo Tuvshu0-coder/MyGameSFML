@@ -86,6 +86,26 @@ Game::Game() : m_window(sf::VideoMode({ 854, 480 }), "Get your bugatti back!")
 		"Assets/Maps/map3.tmx"
 	};
 
+	m_endingCreditsText =
+		"You've won a Bugatti!\n"
+		"\n"
+		"Developer\n"
+		"Tuvshinzaya (CSE-2, 11th generation)\n"
+		"\n"
+		"Design\n"
+		"Bugatti Retrieval Department\n"
+		"\n"
+		"Combat Choreography\n"
+		"Very Serious Sword Club\n"
+		"\n"
+		"Monsters & Vehicle Handling\n"
+		"Street Racing Division\n"
+		"\n"
+		"Special Thanks\n"
+		"You, for getting the car back\n"
+		"\n"
+		"THE END";
+
 	loadLevel(0, true);
 }
 
@@ -529,6 +549,17 @@ void Game::update(float deltaTime)
 
 	updateSwordsmanInteraction(deltaTime);
 	updateCamera(deltaTime);
+
+	if (m_gameState == GameState::Playing && m_currentLevelIndex == 2 && m_bugattiTriggered && !m_bugattiFalling)
+	{
+		if (!m_showEndingCredits)
+		{
+			m_showEndingCredits = true;
+			m_endingCreditsOffset = static_cast<float>(m_window.getSize().y);
+		}
+
+		updateEndingCredits(deltaTime);
+	}
 }
 
 void Game::drawUI()
@@ -892,8 +923,8 @@ void Game::render()
 		drawOverlay("You Died", "R or Enter - Retry\nQ or Esc - Quit");
 	else if (m_gameState == GameState::LevelComplete)
 		drawLevelComplete();
-	else if (m_gameState == GameState::Playing && m_currentLevelIndex == 2 && m_bugattiTriggered && !m_bugattiFalling)
-		drawOverlay("You've won BUGATTI!", "");
+	//else if (m_gameState == GameState::Playing && m_currentLevelIndex == 2 && m_bugattiTriggered && !m_bugattiFalling)
+	//	drawOverlay("You've won BUGATTI!", "");
 
 	if (m_gameState == GameState::Playing && m_showInteractPrompt)
 		drawInteractPrompt();
@@ -903,6 +934,9 @@ void Game::render()
 
 	if (m_gameState == GameState::Playing && m_showTutorialPrompt)
 		drawTutorialPrompt();
+
+	if (m_gameState == GameState::Playing && m_showEndingCredits)
+		drawEndingCredits();
 
 	m_window.display();
 }
@@ -946,3 +980,39 @@ void Game::drawTutorialPrompt()
 
 	m_window.setView(m_view);
 }
+
+void Game::updateEndingCredits(float deltaTime)
+{
+	if (!m_showEndingCredits)
+		return;
+
+	m_endingCreditsOffset -= m_endingCreditsSpeed * deltaTime;
+}
+
+void Game::drawEndingCredits()
+{
+	if (!m_showEndingCredits)
+		return;
+
+	m_window.setView(m_window.getDefaultView());
+
+	const sf::Vector2u ws = m_window.getSize();
+
+	sf::RectangleShape dim({ static_cast<float>(ws.x), static_cast<float>(ws.y) });
+	dim.setFillColor(sf::Color(0, 0, 0, 200));
+	m_window.draw(dim);
+
+	sf::Text credits(m_uiFont);
+	credits.setString(m_endingCreditsText);
+	credits.setCharacterSize(16);
+	credits.setFillColor(sf::Color::White);
+
+	const sf::FloatRect bounds = credits.getLocalBounds();
+	credits.setOrigin({ bounds.position.x + bounds.size.x * 0.5f, bounds.position.y });
+	credits.setPosition({ static_cast<float>(ws.x) * 0.5f, m_endingCreditsOffset });
+
+	m_window.draw(credits);
+
+	m_window.setView(m_view);
+}
+
