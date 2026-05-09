@@ -29,6 +29,9 @@ Game::Game() : m_window(sf::VideoMode({ 854, 480 }), "Get your bugatti back!")
 	if (!m_endingMusic.openFromFile("Assets/music/ending_music.mp3"))
 		std::cerr << "Failed to load ending music!\n";
 
+	if (!m_levelFinishMusic.openFromFile("Assets/music/level_finish.mp3"))
+		std::cerr << "Failed to load level finish music!\n";
+
 	if (!m_backgroundTexture.loadFromFile("Assets/background.png"))
 		std::cerr << "Failed to load background texture!\n";
 
@@ -58,6 +61,24 @@ Game::Game() : m_window(sf::VideoMode({ 854, 480 }), "Get your bugatti back!")
 		m_bugattiSprite.emplace(m_bugattiTexture);
 		m_bugattiSprite->setScale({ 0.5f, 0.5f });
 	}
+
+	m_dialogLines = {
+		"Stranger \n\nHello traveler.",
+		"Me \n\nHi, Have you seen my Bugatti",
+		"Me \n\nI was doin' something real important, y'know, \ntakin' a nap and then... poof.",
+		"Me \n\nIt's gone",
+		"Stranger \n\nUh, I saw three huge monsters driving \nBugatti at like, 100 miles per hour. They went that way.",
+		"Me \n\nThree of em huh?",
+		"Me \n\nI'm gonna catch 'em",
+		"Stranger \n\nTake these swords with you",
+		"Stranger \n\nYou might need it traveller",
+	};
+
+	m_tutorialText =
+		"Press J to swing your sword\n"
+		"A/D - Move\n"
+		"Space - Jump\n"
+		"K - Block";
 
 	m_levelPaths = {
 		"Assets/Maps/map1.tmx",
@@ -122,6 +143,82 @@ void Game::updateMainMenuLayout(sf::Vector2u windowSize)
 
 	m_mainMenuBackground->setScale({ scaleX, scaleY });
 	m_mainMenuBackground->setPosition({ 0.f, 0.f });
+}
+
+void Game::updateSwordsmanInteraction(float deltaTime)
+{
+	m_showInteractPrompt = false;
+
+	if (m_gameState != GameState::Playing || m_currentLevelIndex != 0 || !m_swordsmanSprite)
+		return;
+
+	const sf::Vector2f playerCenter = m_player.getCenter();
+	const sf::FloatRect swordBounds = m_swordsmanSprite->getGlobalBounds();
+	const sf::Vector2f swordCenter{
+		swordBounds.position.x + swordBounds.size.x * 0.5f,
+		swordBounds.position.y + swordBounds.size.y * 0.5f
+	};
+
+	const float dx = playerCenter.x - swordCenter.x;
+	const float dy = playerCenter.y - swordCenter.y;
+	const float distance = std::sqrt((dx * dx) + (dy * dy));
+
+	if (distance <= m_interactDistance)
+		m_showInteractPrompt = !m_dialogOpen && !m_showTutorialPrompt;
+
+	if (m_dialogOpen && !m_dialogLines.empty())
+	{
+		const std::string& line = m_dialogLines[m_dialogLineIndex];
+		if (m_dialogVisibleChars < line.size())
+		{
+			m_dialogCharTimer += deltaTime;
+			while (m_dialogCharTimer >= m_dialogCharDelay && m_dialogVisibleChars < line.size())
+			{
+				m_dialogCharTimer -= m_dialogCharDelay;
+				++m_dialogVisibleChars;
+			}
+		}
+	}
+}
+
+void Game::startDialog()
+{
+	if (m_dialogLines.empty())
+		return;
+
+	m_dialogOpen = true;
+	m_showTutorialPrompt = false;
+	m_dialogLineIndex = 0;
+	m_dialogVisibleChars = 0;
+	m_dialogCharTimer = 0.f;
+}
+
+void Game::advanceDialog()
+{
+	if (!m_dialogOpen || m_dialogLines.empty())
+		return;
+
+	const std::string& line = m_dialogLines[m_dialogLineIndex];
+	if (m_dialogVisibleChars < line.size())
+	{
+		m_dialogVisibleChars = line.size();
+		return;
+	}
+
+	if (m_dialogLineIndex + 1 < m_dialogLines.size())
+	{
+		++m_dialogLineIndex;
+		m_dialogVisibleChars = 0;
+		m_dialogCharTimer = 0.f;
+	}
+	else
+	{
+		m_dialogOpen = false;
+		m_dialogLineIndex = 0;
+		m_dialogVisibleChars = 0;
+		m_dialogCharTimer = 0.f;
+		m_showTutorialPrompt = true;
+	}
 }
 
 void Game::updateCamera(float deltaTime)
@@ -233,10 +330,22 @@ void Game::processEvents()
 			}
 			else if (m_gameState == GameState::Playing)
 			{
-				if (key == sf::Keyboard::Key::J)
+				if (key == sf::Keyboard::Key::E)
+				{
+					if (m_dialogOpen)
+						advanceDialog();
+					else if (m_showInteractPrompt)
+						startDialog();
+				}
+				else if (key == sf::Keyboard::Key::J)
+				{
 					m_player.attack();
+					m_showTutorialPrompt = false;
+				}
 				else if (key == sf::Keyboard::Key::P || key == sf::Keyboard::Key::Escape)
+				{
 					m_gameState = GameState::Paused;
+				}
 			}
 			else if (m_gameState == GameState::Paused)
 			{
@@ -321,6 +430,12 @@ void Game::update(float deltaTime)
 	{
 		if (m_currentLevelIndex < 2)
 		{
+			if (!m_levelFinishPlayed && m_levelFinishMusic.getStatus() != sf::SoundSource::Status::Playing)
+			{
+				m_levelFinishMusic.play();
+				m_levelFinishPlayed = true;
+			}
+
 			m_gameState = GameState::LevelComplete;
 			return;
 		}
@@ -335,6 +450,7 @@ void Game::update(float deltaTime)
 
 		if (!m_endingMusicPlayed && m_endingMusic.getStatus() != sf::SoundSource::Status::Playing)
 		{
+			m_backgroundMusic.stop();
 			m_endingMusic.play();
 			m_endingMusicPlayed = true;
 		}
@@ -411,6 +527,7 @@ void Game::update(float deltaTime)
 		return;
 	}
 
+	updateSwordsmanInteraction(deltaTime);
 	updateCamera(deltaTime);
 }
 
@@ -436,7 +553,7 @@ void Game::drawUI()
 	playerBg.setPosition({ uiX + margin, uiY + margin });
 	playerBg.setFillColor(sf::Color(40, 40, 40));
 	playerBg.setOutlineThickness(1.f);
-	playerBg.setOutlineColor(sf::Color::White);
+ playerBg.setOutlineColor(sf::Color::White);
 
 	const float playerRatio = static_cast<float>(m_player.getHealth()) / static_cast<float>(std::max(1, m_player.getMaxHealth()));
 	sf::RectangleShape playerHp({ barW * std::clamp(playerRatio, 0.f, 1.f), barH });
@@ -486,7 +603,7 @@ void Game::drawOverlay(const std::string& title, const std::string& body)
 	sf::Text titleText(m_uiFont);
 	titleText.setString(title);
 	titleText.setCharacterSize(28);
-	titleText.setFillColor(sf::Color::White);
+titleText.setFillColor(sf::Color::White);
 	const sf::FloatRect titleBounds = titleText.getLocalBounds();
 	titleText.setOrigin({ titleBounds.position.x + titleBounds.size.x * 0.5f, titleBounds.position.y + titleBounds.size.y * 0.5f });
 	titleText.setPosition({ static_cast<float>(ws.x) * 0.5f, static_cast<float>(ws.y) * 0.4f });
@@ -501,6 +618,71 @@ void Game::drawOverlay(const std::string& title, const std::string& body)
 
 	m_window.draw(titleText);
 	m_window.draw(bodyText);
+
+	m_window.setView(m_view);
+}
+
+void Game::drawInteractPrompt()
+{
+	if (!m_swordsmanSprite)
+		return;
+
+	m_window.setView(m_view);
+
+	const sf::FloatRect bounds = m_swordsmanSprite->getGlobalBounds();
+	sf::Text prompt(m_uiFont);
+	prompt.setString("Press E to Interact");
+	prompt.setCharacterSize(10);
+	prompt.setFillColor(sf::Color::White);
+	const sf::FloatRect textBounds = prompt.getLocalBounds();
+	prompt.setOrigin({ textBounds.position.x + textBounds.size.x * 0.5f, textBounds.position.y + textBounds.size.y });
+	prompt.setPosition({ bounds.position.x + bounds.size.x * 0.5f, bounds.position.y - 6.f });
+
+	const float padX = 5.f;
+	const float padY = 3.f;
+	sf::RectangleShape backdrop({
+		textBounds.size.x + (padX * 2.f),
+		textBounds.size.y + (padY * 2.f)
+	});
+	backdrop.setOrigin({ (textBounds.size.x * 0.5f) + padX, textBounds.size.y + padY });
+	backdrop.setPosition(prompt.getPosition());
+	backdrop.setFillColor(sf::Color(0, 0, 0, 180));
+
+	m_window.draw(backdrop);
+	m_window.draw(prompt);
+	m_window.setView(m_view);
+}
+
+void Game::drawDialogBox()
+{
+	if (!m_dialogOpen || m_dialogLines.empty())
+		return;
+
+	m_window.setView(m_window.getDefaultView());
+
+	const sf::Vector2u ws = m_window.getSize();
+	const float margin = 16.f;
+	const float boxHeight = 86.f;
+
+	sf::RectangleShape box({
+		static_cast<float>(ws.x) - (margin * 2.f),
+		boxHeight
+	});
+	box.setPosition({ margin, static_cast<float>(ws.y) - boxHeight - margin });
+	box.setFillColor(sf::Color(10, 10, 10, 210));
+	box.setOutlineThickness(2.f);
+	box.setOutlineColor(sf::Color::White);
+	m_window.draw(box);
+
+	const std::string& line = m_dialogLines[m_dialogLineIndex];
+	const std::string visible = line.substr(0, std::min(m_dialogVisibleChars, line.size()));
+
+	sf::Text dialogText(m_uiFont);
+	dialogText.setString(visible);
+	dialogText.setCharacterSize(14);
+	dialogText.setFillColor(sf::Color::White);
+	dialogText.setPosition({ margin + 12.f, static_cast<float>(ws.y) - boxHeight - margin + 12.f });
+	m_window.draw(dialogText);
 
 	m_window.setView(m_view);
 }
@@ -626,6 +808,13 @@ bool Game::loadLevel(int levelIndex, bool reloadPlayer)
 	m_bugattiDelayTimer = 0.f;
 	m_endingMusicPlayed = false;
 
+	m_dialogOpen = false;
+	m_showInteractPrompt = false;
+	m_showTutorialPrompt = false;
+	m_dialogLineIndex = 0;
+	m_dialogVisibleChars = 0;
+	m_dialogCharTimer = 0.f;
+
 	if (reloadPlayer)
 	{
 		m_player = Player();
@@ -706,5 +895,54 @@ void Game::render()
 	else if (m_gameState == GameState::Playing && m_currentLevelIndex == 2 && m_bugattiTriggered && !m_bugattiFalling)
 		drawOverlay("You've won BUGATTI!", "");
 
+	if (m_gameState == GameState::Playing && m_showInteractPrompt)
+		drawInteractPrompt();
+
+	if (m_gameState == GameState::Playing && m_dialogOpen)
+		drawDialogBox();
+
+	if (m_gameState == GameState::Playing && m_showTutorialPrompt)
+		drawTutorialPrompt();
+
 	m_window.display();
+}
+
+void Game::drawTutorialPrompt()
+{
+	if (!m_showTutorialPrompt)
+		return;
+
+	m_window.setView(m_window.getDefaultView());
+
+	sf::Text text(m_uiFont);
+	text.setString(m_tutorialText);
+	text.setCharacterSize(12);
+	text.setFillColor(sf::Color(230, 230, 230));
+
+	const sf::FloatRect textBounds = text.getLocalBounds();
+	const float pad = 8.f;
+	const float margin = 12.f;
+	const sf::Vector2u ws = m_window.getSize();
+
+	const float boxX = margin;
+	const float boxY = static_cast<float>(ws.y) - (textBounds.size.y + pad * 2.f) - margin;
+
+	sf::RectangleShape box({
+		textBounds.size.x + (pad * 2.f),
+		textBounds.size.y + (pad * 2.f)
+	});
+	box.setPosition({ boxX, boxY });
+	box.setFillColor(sf::Color(0, 0, 0, 200));
+	box.setOutlineThickness(1.f);
+	box.setOutlineColor(sf::Color(255, 255, 255, 120));
+
+	text.setPosition({
+		boxX + pad - textBounds.position.x,
+		boxY + pad - textBounds.position.y
+	});
+
+	m_window.draw(box);
+	m_window.draw(text);
+
+	m_window.setView(m_view);
 }

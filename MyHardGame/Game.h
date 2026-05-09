@@ -30,6 +30,13 @@ private:
 	void resetGame();
 	bool loadLevel(int levelIndex, bool reloadPlayer);
 
+	void updateSwordsmanInteraction(float deltaTime);
+	void startDialog();
+	void advanceDialog();
+	void drawInteractPrompt();
+	void drawDialogBox();
+	void drawTutorialPrompt();
+
 private:
 	const sf::Vector2u m_baseResolution{ 426, 240 };
 	sf::View m_view;
@@ -74,6 +81,21 @@ private:
 	bool m_endingMusicPlayed = false;
 	bool m_bugattiPending = false;
 	float m_bugattiDelayTimer = 0.f;
+
+	sf::Music m_levelFinishMusic;
+	bool m_levelFinishPlayed = false;
+
+	bool m_showInteractPrompt = false;
+	bool m_dialogOpen = false;
+	std::vector<std::string> m_dialogLines;
+	std::size_t m_dialogLineIndex = 0;
+	std::size_t m_dialogVisibleChars = 0;
+	float m_dialogCharTimer = 0.f;
+	float m_dialogCharDelay = 0.02f;
+	float m_interactDistance = 55.f;
+
+	bool m_showTutorialPrompt = false;
+	std::string m_tutorialText;
 
 private:
 	void updateBackgroundLayout(sf::Vector2u windowSize);
