@@ -77,7 +77,7 @@ private:
 	std::optional<sf::Sprite> m_bugattiSprite;
 	bool m_bugattiTriggered = false;
 	bool m_bugattiFalling = false;
-	float m_bugattiFallSpeed = 520.f;
+	float m_bugattiFallSpeed = 540.f;
 
 	sf::Music m_backgroundMusic;
 	sf::Music m_endingMusic;
@@ -105,7 +105,7 @@ private:
 
 	bool m_showEndingCredits = false;
 	float m_endingCreditsOffset = 0.f;
-	float m_endingCreditsSpeed = 28.f;
+	float m_endingCreditsSpeed = 100.f;
 	std::string m_endingCreditsText;
 
 private:

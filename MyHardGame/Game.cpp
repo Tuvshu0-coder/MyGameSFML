@@ -489,7 +489,7 @@ void Game::update(float deltaTime)
 			m_bugattiPending = false;
 			m_bugattiTriggered = true;
 			m_bugattiFalling = true;
-			m_bugattiSprite->setPosition({ m_player.getCenter().x - 59.f, playerBounds.position.y - 80.f });
+			m_bugattiSprite->setPosition({ m_player.getCenter().x - 59.f, playerBounds.position.y - 150.f });
 		}
 	}
 
