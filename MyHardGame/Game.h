@@ -105,7 +105,7 @@ private:
 
 	bool m_showEndingCredits = false;
 	float m_endingCreditsOffset = 0.f;
-	float m_endingCreditsSpeed = 100.f;
+	float m_endingCreditsSpeed = 25.f;
 	std::string m_endingCreditsText;
 
 private:
