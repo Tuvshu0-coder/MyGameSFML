@@ -18,7 +18,7 @@ public:
     void resetForLevel(sf::Vector2f position);
 
     void jump();
-    void attack();
+    bool attack();
     void applyGravity(float deltaTime);
     void update(float deltaTime, sf::Vector2u windowSize);
     void resolveCollisions(const std::vector<sf::FloatRect>& platforms);
@@ -34,6 +34,7 @@ public:
     sf::Vector2f getCenter() const;
 
     bool consumeAttackHit();
+    bool consumeAttackMissed();
     void takeDamage(int amount);
     int getHealth() const;
     int getMaxHealth() const;
@@ -47,9 +48,6 @@ private:
     sf::Texture m_texture;
     sf::Sprite m_sprite;
 
-    sf::SoundBuffer m_swingBuffer;
-    std::optional<sf::Sound> m_swingSound;
-
     float m_velocityX = 0.f;
     float m_velocityY = 0.f;
     int m_inputDir = 0;
@@ -60,6 +58,7 @@ private:
     bool m_isAttacking = false;
     bool m_queueNextAttack = false;
     bool m_attackHitConsumed = false;
+    bool m_attackMissed = false;
     int m_comboStep = 0;
     float m_comboTimer = 0.f;
     float m_comboTimeout = 0.35f;

@@ -2,6 +2,7 @@
 #include <iostream>
 #include <algorithm>
 #include <cmath>
+#include <random>
 
 Game::Game() : m_window(sf::VideoMode({ 854, 480 }), "Get your bugatti back!")
 {
@@ -31,6 +32,22 @@ Game::Game() : m_window(sf::VideoMode({ 854, 480 }), "Get your bugatti back!")
 
 	if (!m_levelFinishMusic.openFromFile("Assets/music/level_finish.mp3"))
 		std::cerr << "Failed to load level finish music!\n";
+
+	if (!m_enemyDeathBuffer.loadFromFile("Assets/music/combat/enemyDeath.wav"))
+		std::cerr << "Failed to load enemy death sound!\n";
+
+	if (!m_swordSwingBuffer.loadFromFile("Assets/music/combat/SwordSwing.wav"))
+		std::cerr << "Failed to load sword swing sound!\n";
+
+	for (int i = 1; i <= 7; ++i)
+	{
+		sf::SoundBuffer buffer;
+		const std::string path = "Assets/music/combat/enemyHurt" + std::to_string(i) + ".wav";
+		if (buffer.loadFromFile(path))
+			m_enemyHurtBuffers.push_back(std::move(buffer));
+		else
+			std::cerr << "Failed to load enemy hurt sound: " << path << "\n";
+	}
 
 	if (!m_backgroundTexture.loadFromFile("Assets/background.png"))
 		std::cerr << "Failed to load background texture!\n";
@@ -359,7 +376,9 @@ void Game::processEvents()
 				}
 				else if (key == sf::Keyboard::Key::J)
 				{
-					m_player.attack();
+					if (m_player.attack())
+						playSwordSwing();
+
 					m_showTutorialPrompt = false;
 				}
 				else if (key == sf::Keyboard::Key::P || key == sf::Keyboard::Key::Escape)
@@ -499,10 +518,17 @@ void Game::update(float deltaTime)
 		const float dist = std::abs(m_player.getCenter().x - m_enemy.getCenter().x);
 		if (dist <= 50.f)
 		{
+			const bool willDie = (m_enemy.getHealth() - 15) <= 0;
 			m_enemy.takeDamage(15);
 			m_hitStopTimer = m_hitStopDuration;
+
+			if (willDie)
+				playEnemyDeath();
+			else
+				playEnemyHurt();
 		}
 	}
+
 
 	// Enemy -> Player hit
 	if (!m_player.isDead() && m_enemy.consumeAttackHit())
@@ -644,7 +670,7 @@ void Game::drawOverlay(const std::string& title, const std::string& body)
 	sf::Text titleText(m_uiFont);
 	titleText.setString(title);
 	titleText.setCharacterSize(28);
-titleText.setFillColor(sf::Color::White);
+	titleText.setFillColor(sf::Color::White);
 	const sf::FloatRect titleBounds = titleText.getLocalBounds();
 	titleText.setOrigin({ titleBounds.position.x + titleBounds.size.x * 0.5f, titleBounds.position.y + titleBounds.size.y * 0.5f });
 	titleText.setPosition({ static_cast<float>(ws.x) * 0.5f, static_cast<float>(ws.y) * 0.4f });
@@ -739,7 +765,7 @@ void Game::drawMainMenu()
 	sf::Text titleText(m_uiFont);
 	titleText.setString("Get your Bugatti back!");
 	titleText.setCharacterSize(32);
-	titleText.setFillColor(sf::Color::White);
+titleText.setFillColor(sf::Color::White);
 	const sf::FloatRect titleBounds = titleText.getLocalBounds();
 	titleText.setOrigin({ titleBounds.position.x + titleBounds.size.x * 0.5f, titleBounds.position.y + titleBounds.size.y * 0.5f });
 	titleText.setPosition({ centerX, static_cast<float>(ws.y) * 0.28f });
@@ -1027,6 +1053,50 @@ void Game::drawEndingCredits()
 	m_window.setView(m_view);
 }
 
-float m_hitStopTimer = 0.f;
-float m_hitStopDuration = 0.12f;
+void Game::playEnemyHurt()
+{
+	if (m_enemyHurtBuffers.empty())
+		return;
+
+	std::uniform_int_distribution<int> dist(0, static_cast<int>(m_enemyHurtBuffers.size() - 1));
+	int index = dist(m_rng);
+
+	if (m_enemyHurtBuffers.size() > 1)
+	{
+		while (index == m_lastEnemyHurtIndex)
+			index = dist(m_rng);
+	}
+
+	m_lastEnemyHurtIndex = index;
+	m_enemyHurtSound.emplace(m_enemyHurtBuffers[static_cast<std::size_t>(index)]);
+	m_enemyHurtSound->play();
+}
+
+void Game::playEnemyDeath()
+{
+	if (m_enemyDeathBuffer.getSampleCount() == 0)
+		return;
+
+	m_enemyDeathSound.emplace(m_enemyDeathBuffer);
+	m_enemyDeathSound->play();
+}
+
+void Game::playSwordSwing()
+{
+	if (m_swordSwingBuffer.getSampleCount() == 0)
+		return;
+
+	m_swordSwingSound.emplace(m_swordSwingBuffer);
+	m_swordSwingSound->play();
+}
+
+
+
+
+
+
+
+
+
+
 

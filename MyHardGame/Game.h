@@ -4,6 +4,7 @@
 #include <vector>
 #include <optional>
 #include <string>
+#include <random>
 #include "Player.h"
 #include "World.h"
 #include "Enemy.h"
@@ -36,6 +37,10 @@ private:
 	void drawInteractPrompt();
 	void drawDialogBox();
 	void drawTutorialPrompt();
+
+	void playEnemyHurt();
+	void playEnemyDeath();
+	void playSwordSwing();
 
 private:
 	const sf::Vector2u m_baseResolution{ 426, 240 };
@@ -87,6 +92,15 @@ private:
 
 	sf::Music m_levelFinishMusic;
 	bool m_levelFinishPlayed = false;
+
+	sf::SoundBuffer m_enemyDeathBuffer;
+	std::optional<sf::Sound> m_enemyDeathSound;
+	std::vector<sf::SoundBuffer> m_enemyHurtBuffers;
+	std::optional<sf::Sound> m_enemyHurtSound;
+	sf::SoundBuffer m_swordSwingBuffer;
+	std::optional<sf::Sound> m_swordSwingSound;
+	int m_lastEnemyHurtIndex = -1;
+	std::mt19937 m_rng{ std::random_device{}() };
 
 	bool m_showInteractPrompt = false;
 	bool m_dialogOpen = false;

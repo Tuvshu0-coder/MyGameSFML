@@ -17,16 +17,6 @@ bool Player::load(const std::string& path, sf::Vector2u windowSize)
 
 	m_sprite.setPosition({ static_cast<float>(windowSize.x) * 0.5f, static_cast<float>(windowSize.y) * 0.5f });
 
-	if (m_swingBuffer.loadFromFile("Assets/music/swing.mp3"))
-	{
-		m_swingSound.emplace(m_swingBuffer);
-		m_swingSound->setVolume(70.f);
-	}
-	else
-	{
-		std::cerr << "Failed to load swing sound!\n";
-	}
-
 	// I will update this function later to handle my new sprite sheet logic
 	updateAnimation(0.0f);
 	return true;
@@ -49,6 +39,7 @@ void Player::resetForLevel(sf::Vector2f position)
 	m_isAttacking = false;
 	m_queueNextAttack = false;
 	m_attackHitConsumed = false;
+	m_attackMissed = false;
 	m_comboStep = 0;
 	m_comboTimer = 0.f;
 	setDirection(Direction::Right);
@@ -78,26 +69,23 @@ void Player::applyGravity(float deltaTime)
 	m_sprite.move({ 0.f, m_velocityY * deltaTime });
 }
 
-void Player::attack()
+bool Player::attack()
 {
 	if (m_state == State::Death || m_state == State::Hit || isBlocking())
-		return;
+		return false;
 
 	if (!m_isAttacking)
 	{
 		const int nextCombo = (m_comboStep <= 0) ? 1 : (m_comboStep < 4 ? m_comboStep + 1 : 1);
 		startAttack(nextCombo);
-
-		if (m_swingSound)
-		{
-			m_swingSound->stop();
-			m_swingSound->play();
-		}
+		return true;
 	}
 	else if (m_comboStep < 4)
 	{
 		m_queueNextAttack = true;
 	}
+
+	return false;
 }
 
 void Player::startAttack(int comboIndex)
@@ -106,6 +94,7 @@ void Player::startAttack(int comboIndex)
 	m_queueNextAttack = false;
 	m_comboStep = comboIndex;
 	m_comboTimer = 0.f;
+	m_attackMissed = false;
 
 	if (comboIndex == 1) setState(State::Attack1);
 	else if (comboIndex == 2) setState(State::Attack2);
@@ -252,6 +241,15 @@ bool Player::consumeAttackHit()
 	}
 
 	return false;
+}
+
+bool Player::consumeAttackMissed()
+{
+	if (!m_attackMissed)
+		return false;
+
+	m_attackMissed = false;
+	return true;
 }
 
 void Player::takeDamage(int amount)
@@ -405,6 +403,9 @@ void Player::updateAnimation(float deltaTime)
 
 		if (isAttackState)
 		{
+			if (!m_attackHitConsumed && !m_queueNextAttack)
+				m_attackMissed = true;
+
 			if (m_queueNextAttack && m_comboStep < 4)
 				startAttack(m_comboStep + 1);
 			else
@@ -520,7 +521,6 @@ void Player::resolveCollisions(const std::vector<sf::FloatRect>& platforms)
 		bounds = getBodyBounds();
 	}
 }
-
 
 void Player::setHorizontalInput(int dir, bool running)
 {
