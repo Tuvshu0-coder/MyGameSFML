@@ -93,7 +93,7 @@ Game::Game() : m_window(sf::VideoMode({ 854, 480 }), "Get your bugatti back!")
 
 	m_tutorialText =
 		"Press J to swing your sword\n"
-		"A/D - Move\n"
+		"A/D - Move Hold LSHIFT to Run\n"
 		"Space - Jump\n"
 		"K - Block";
 
@@ -104,22 +104,36 @@ Game::Game() : m_window(sf::VideoMode({ 854, 480 }), "Get your bugatti back!")
 	};
 
 	m_endingCreditsText =
-		"You've won a Bugatti!\n"
+		"You've gotten your bugatti back!\n"
 		"\n"
 		"Developer\n"
 		"Tuvshinzaya (CSE-2, 11th generation)\n"
 		"\n"
 		"Design\n"
-		"Bugatti Retrieval Department\n"
+		"Bugatti Retrieval Department (Now Hiring)\n"
+		"\n"
+		"Level Design\n"
+		"E.Tuvshinzaya (Chief Map Scribbler)\n"
 		"\n"
 		"Combat Choreography\n"
-		"Very Serious Sword Club\n"
+		"Very Serious Sword Club (Mostly Serious)\n"
 		"\n"
 		"Monsters & Vehicle Handling\n"
-		"Street Racing Division\n"
+		"Street Racing Division (No License Required)\n"
+		"\n"
+		"Audio Direction\n"
+		"Turbo Vinyl Records (Volume at 11)\n"
+		"\n"
+		"Art & Animation asset\n"
+		"Penusbmic - The DARK series\n"
+		"\n"
+		"QA & Playtesting\n"
+		"Bugatti Recovery Task Force (Tested. A lot.)\n"
 		"\n"
 		"Special Thanks\n"
 		"You, for getting the car back\n"
+		"Everyone who actually watched the credits\n"
+		"That one monster who parked my bugatti properly\n"
 		"\n"
 		"THE END";
 
@@ -1039,16 +1053,43 @@ void Game::drawEndingCredits()
 	dim.setFillColor(sf::Color(0, 0, 0, 200));
 	m_window.draw(dim);
 
-	sf::Text credits(m_uiFont);
-	credits.setString(m_endingCreditsText);
-	credits.setCharacterSize(16);
-	credits.setFillColor(sf::Color::White);
+	const float centerX = static_cast<float>(ws.x) * 0.5f;
+	const float baseY = m_endingCreditsOffset;
+	const float lineSpacing = 18.f;
 
-	const sf::FloatRect bounds = credits.getLocalBounds();
-	credits.setOrigin({ bounds.position.x + bounds.size.x * 0.5f, bounds.position.y });
-	credits.setPosition({ static_cast<float>(ws.x) * 0.5f, m_endingCreditsOffset });
+	sf::Text lineText(m_uiFont);
+	lineText.setCharacterSize(14);
+	lineText.setFillColor(sf::Color(245, 245, 245));
+	lineText.setOutlineThickness(1.f);
+	lineText.setOutlineColor(sf::Color(0, 0, 0, 180));
 
-	m_window.draw(credits);
+	std::vector<std::string> lines;
+	std::string current;
+	for (char ch : m_endingCreditsText)
+	{
+		if (ch == '\n')
+		{
+			lines.push_back(current);
+			current.clear();
+		}
+		else
+		{
+			current.push_back(ch);
+		}
+	}
+	lines.push_back(current);
+
+	float y = baseY;
+	for (const auto& line : lines)
+	{
+		lineText.setString(line);
+		const sf::FloatRect bounds = lineText.getLocalBounds();
+		lineText.setOrigin({ bounds.position.x + bounds.size.x * 0.5f, 0.f });
+		lineText.setPosition({ centerX, y });
+
+		m_window.draw(lineText);
+		y += lineSpacing;
+	}
 
 	m_window.setView(m_view);
 }
@@ -1089,14 +1130,3 @@ void Game::playSwordSwing()
 	m_swordSwingSound.emplace(m_swordSwingBuffer);
 	m_swordSwingSound->play();
 }
-
-
-
-
-
-
-
-
-
-
-
