@@ -37,10 +37,12 @@ private:
 	void drawInteractPrompt();
 	void drawDialogBox();
 	void drawTutorialPrompt();
+	void drawParryFlash();
 
 	void playEnemyHurt();
 	void playEnemyDeath();
 	void playSwordSwing();
+	void playParry();
 
 private:
 	const sf::Vector2u m_baseResolution{ 426, 240 };
@@ -99,8 +101,15 @@ private:
 	std::optional<sf::Sound> m_enemyHurtSound;
 	sf::SoundBuffer m_swordSwingBuffer;
 	std::optional<sf::Sound> m_swordSwingSound;
+	sf::SoundBuffer m_parryBuffer;
+	std::optional<sf::Sound> m_parrySound;
 	int m_lastEnemyHurtIndex = -1;
 	std::mt19937 m_rng{ std::random_device{}() };
+
+	float m_parryFreezeTimer = 0.f;
+	float m_parryFreezeDuration = 0.25f;
+	float m_parryFlashTimer = 0.f;
+	float m_parryFlashFrequency = 18.f;
 
 	bool m_showInteractPrompt = false;
 	bool m_dialogOpen = false;

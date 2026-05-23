@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <random>
+#include <cstdint>
 
 Game::Game() : m_window(sf::VideoMode({ 854, 480 }), "Get your bugatti back!")
 {
@@ -38,6 +39,9 @@ Game::Game() : m_window(sf::VideoMode({ 854, 480 }), "Get your bugatti back!")
 
 	if (!m_swordSwingBuffer.loadFromFile("Assets/music/combat/SwordSwing.wav"))
 		std::cerr << "Failed to load sword swing sound!\n";
+
+	if (!m_parryBuffer.loadFromFile("Assets/music/combat/parry.wav"))
+		std::cerr << "Failed to load parry sound!\n";
 
 	for (int i = 1; i <= 7; ++i)
 	{
@@ -107,7 +111,7 @@ Game::Game() : m_window(sf::VideoMode({ 854, 480 }), "Get your bugatti back!")
 		"You've gotten your bugatti back!\n"
 		"\n"
 		"Developer\n"
-		"Tuvshinzaya (CSE-2, 11th generation)\n"
+		"E.Tuvshinzaya (CSE-2, 11th generation)\n"
 		"\n"
 		"Design\n"
 		"Bugatti Retrieval Department (Now Hiring)\n"
@@ -419,6 +423,24 @@ void Game::processEvents()
 					m_window.close();
 				}
 			}
+			else if (m_gameState == GameState::LevelComplete)
+			{
+				if (key == sf::Keyboard::Key::Enter)
+				{
+					const int nextLevel = m_currentLevelIndex + 1;
+					if (nextLevel < static_cast<int>(m_levelPaths.size()))
+					{
+						m_currentLevelIndex = nextLevel;
+						loadLevel(m_currentLevelIndex, false);
+						m_gameState = GameState::Playing;
+					}
+					else
+					{
+						m_gameState = GameState::MainMenu;
+						m_mainMenuSelection = MainMenuOption::Start;
+					}
+				}
+			}
 		}
 
 		if (const auto* mousePressed = event->getIf<sf::Event::MouseButtonPressed>())
@@ -457,6 +479,13 @@ void Game::update(float deltaTime)
 {
 	if (m_gameState != GameState::Playing)
 		return;
+	if (m_parryFreezeTimer > 0.f)
+	{
+		m_parryFreezeTimer = std::max(0.f, m_parryFreezeTimer - deltaTime);
+		m_parryFlashTimer += deltaTime;
+		drawParryFlash();
+		return;
+	}
 	if (m_hitStopTimer > 0.f)
 	{
 		m_hitStopTimer = std::max(0.f, m_hitStopTimer - deltaTime);
@@ -543,21 +572,26 @@ void Game::update(float deltaTime)
 		}
 	}
 
-
 	// Enemy -> Player hit
 	if (!m_player.isDead() && m_enemy.consumeAttackHit())
 	{
 		const float dist = std::abs(m_player.getCenter().x - m_enemy.getCenter().x);
 		if (dist <= 35.f)
 		{
-			m_hitStopTimer = m_hitStopDuration;
-
 			if (m_player.isBlocking())
 			{
 				m_enemy.stun(0.7f);
+
+				if (m_parryFreezeTimer <= 0.f)
+				{
+					m_parryFreezeTimer = m_parryFreezeDuration;
+					m_parryFlashTimer = 0.f;
+					playParry();
+				}
 			}
 			else
 			{
+				m_hitStopTimer = m_hitStopDuration;
 				m_player.takeDamage(20);
 			}
 		}
@@ -839,7 +873,7 @@ void Game::drawLevelComplete()
 	titleText.setPosition({ static_cast<float>(ws.x) * 0.5f, static_cast<float>(ws.y) * 0.4f });
 	m_window.draw(titleText);
 
-	const float buttonW = 280.f;
+	const float buttonW = 360.f;
 	const float buttonH = 42.f;
 	const float centerX = static_cast<float>(ws.x) * 0.5f;
 	const float centerY = static_cast<float>(ws.y) * 0.58f;
@@ -896,6 +930,8 @@ bool Game::loadLevel(int levelIndex, bool reloadPlayer)
 	m_dialogVisibleChars = 0;
 	m_dialogCharTimer = 0.f;
 	m_hitStopTimer = 0.f;
+	m_parryFreezeTimer = 0.f;
+	m_parryFlashTimer = 0.f;
 
 	if (reloadPlayer)
 	{
@@ -1129,4 +1165,32 @@ void Game::playSwordSwing()
 
 	m_swordSwingSound.emplace(m_swordSwingBuffer);
 	m_swordSwingSound->play();
+}
+
+void Game::drawParryFlash()
+{
+	if (m_parryFreezeTimer <= 0.f)
+		return;
+
+	m_window.setView(m_window.getDefaultView());
+
+	const sf::Vector2u ws = m_window.getSize();
+	sf::RectangleShape flash({ static_cast<float>(ws.x), static_cast<float>(ws.y) });
+
+	const float pulse = 0.5f + (0.5f * std::sin(m_parryFlashTimer * m_parryFlashFrequency));
+	const float clamped = std::max(0.f, std::min(1.f, pulse));
+	const std::uint8_t alpha = static_cast<std::uint8_t>(clamped * 200.f);
+	flash.setFillColor(sf::Color(255, 255, 255, alpha));
+
+	m_window.draw(flash);
+	m_window.setView(m_view);
+}
+
+void Game::playParry()
+{
+	if (m_parryBuffer.getSampleCount() == 0)
+		return;
+
+	m_parrySound.emplace(m_parryBuffer);
+	m_parrySound->play();
 }
